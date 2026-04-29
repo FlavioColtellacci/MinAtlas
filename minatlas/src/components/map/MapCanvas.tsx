@@ -14,6 +14,7 @@ mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 interface MapCanvasProps {
   mineSites: MineSite[];
   tenements: Tenement[];
+  terrainEnabled: boolean;
   selectedSite: MineSite | null;
   onSelectSite: (site: MineSite | null) => void;
   onControlsReady?: (controls: { zoomIn: () => void; zoomOut: () => void; flyToAustralia: () => void }) => void;
@@ -22,6 +23,7 @@ interface MapCanvasProps {
 export default function MapCanvas({
   mineSites,
   tenements,
+  terrainEnabled,
   selectedSite,
   onSelectSite,
   onControlsReady,
@@ -29,6 +31,16 @@ export default function MapCanvas({
   const mapRef = useRef<MapRef | null>(null);
   const hasPlayedIntro = useRef(false);
   const [hoveredSite, setHoveredSite] = useState<MineSite | null>(null);
+  const INITIAL_AUSTRALIA_VIEW = useMemo(
+    () => ({
+      longitude: GLOBE_CENTER[0],
+      latitude: GLOBE_CENTER[1],
+      zoom: 2.9,
+      pitch: 0,
+      bearing: 0,
+    }),
+    [],
+  );
 
   const layers = useMemo(
     () =>
@@ -66,6 +78,18 @@ export default function MapCanvas({
     });
   }, [selectedSite]);
 
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map || !map.getSource("mapbox-dem")) return;
+
+    if (terrainEnabled) {
+      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.45 });
+      return;
+    }
+
+    map.setTerrain(null);
+  }, [terrainEnabled]);
+
   const handleMapLoad = () => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -74,11 +98,11 @@ export default function MapCanvas({
       map.flyTo({
         center: WA_TARGET,
         zoom: 5.8,
-        pitch: 52,
-        bearing: -15,
-        duration: 5200,
+        pitch: 46,
+        bearing: -12,
+        duration: 2200,
         essential: true,
-        curve: 1.5,
+        curve: 1.3,
       });
     };
 
@@ -105,33 +129,36 @@ export default function MapCanvas({
       "star-intensity": 0,
     });
 
-    map.addSource("mapbox-dem", {
-      type: "raster-dem",
-      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-      tileSize: 512,
-      maxzoom: 14,
-    });
+    if (!map.getSource("mapbox-dem")) {
+      map.addSource("mapbox-dem", {
+        type: "raster-dem",
+        url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+        tileSize: 512,
+        maxzoom: 14,
+      });
+    }
 
     // Tune interaction inertia for a more premium, fluid map feel.
-    map.scrollZoom.setWheelZoomRate(1 / 700);
-    map.scrollZoom.setZoomRate(1 / 120);
+    map.scrollZoom.setWheelZoomRate(1 / 520);
+    map.scrollZoom.setZoomRate(1 / 100);
     map.dragPan.enable({
-      linearity: 0.2,
+      linearity: 0.25,
       easing: (t) => t,
-      maxSpeed: 1600,
-      deceleration: 2800,
+      maxSpeed: 1800,
+      deceleration: 3200,
     });
 
     if (hasPlayedIntro.current) return;
     hasPlayedIntro.current = true;
 
+    if (terrainEnabled) {
+      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.45 });
+    } else {
+      map.setTerrain(null);
+    }
     window.setTimeout(() => {
       flyToAustralia();
-
-      map.once("moveend", () => {
-        map.setTerrain({ source: "mapbox-dem", exaggeration: 1.6 });
-      });
-    }, 750);
+    }, 80);
   };
 
   return (
@@ -140,11 +167,11 @@ export default function MapCanvas({
         layers={layers}
         controller
         initialViewState={{
-          longitude: GLOBE_CENTER[0],
-          latitude: GLOBE_CENTER[1],
-          zoom: 2,
-          pitch: 0,
-          bearing: 0,
+          longitude: INITIAL_AUSTRALIA_VIEW.longitude,
+          latitude: INITIAL_AUSTRALIA_VIEW.latitude,
+          zoom: INITIAL_AUSTRALIA_VIEW.zoom,
+          pitch: INITIAL_AUSTRALIA_VIEW.pitch,
+          bearing: INITIAL_AUSTRALIA_VIEW.bearing,
         }}
         onClick={(info) => {
           if (!info.object) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import Map, { type MapRef } from "react-map-gl/mapbox";
+import Map, { Marker, type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { GLOBE_CENTER, MAP_STYLE, WA_TARGET } from "@/lib/mapbox";
 import type { MineSite, Tenement } from "@/types/mining";
@@ -96,6 +96,7 @@ export default function MapCanvas({
   );
   const smoothnessMultiplier = smoothness === "cinematic" ? 1.35 : 1;
   const isSatelliteStyle = mapStyleUrl.includes("satellite");
+  const markerSize = Math.round((qualityMode === "performance" ? 8 : 10) * markerScale);
 
   const getDefaultMarkerColor = (opacity: number) =>
     isSatelliteStyle
@@ -824,7 +825,40 @@ export default function MapCanvas({
           applyLabelDensity(map);
           applyTerrainMode(map);
         }}
-      />
+      >
+        {mineSites.map((site) => {
+          const isSelected = site.id === selectedSite?.id;
+          return (
+            <Marker
+              key={site.id}
+              longitude={site.location.coordinates[0]}
+              latitude={site.location.coordinates[1]}
+              anchor="center"
+            >
+              <button
+                type="button"
+                aria-label={`Select ${site.name}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelectSite(site);
+                }}
+                onMouseEnter={() => setHoveredSite(site)}
+                onMouseLeave={() => setHoveredSite(null)}
+                className="block rounded-full border transition-transform duration-150 ease-out hover:scale-125"
+                style={{
+                  width: isSelected ? markerSize + 4 : markerSize,
+                  height: isSelected ? markerSize + 4 : markerSize,
+                  backgroundColor: isSelected ? "rgb(184, 125, 69)" : "rgba(14, 14, 14, 0.92)",
+                  borderColor: "rgba(255, 253, 250, 0.78)",
+                  borderWidth: isSelected ? 2 : 1,
+                  boxShadow: "0 1px 4px rgba(0, 0, 0, 0.45)",
+                  opacity: markerOpacity,
+                }}
+              />
+            </Marker>
+          );
+        })}
+      </Map>
 
       {hoveredSite && (
         <div className="glass pointer-events-none absolute left-4 top-28 z-30 rounded-xl px-3 py-2 text-xs">

@@ -1,40 +1,33 @@
 "use client";
 
-import { Box, Layers3, Settings2 } from "lucide-react";
+import { Layers3, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const controls = [
   { id: "layers", label: "Layers", icon: Layers3 },
-  { id: "terrain", label: "3D Terrain", icon: Box },
   { id: "settings", label: "Settings", icon: Settings2 },
 ] as const;
 
 interface MapControlsProps {
   layersActive: boolean;
-  terrainActive: boolean;
   settingsActive: boolean;
   onToggleLayers: () => void;
-  onToggleTerrain: () => void;
   onToggleSettings: () => void;
 }
 
 export default function MapControls({
   layersActive,
-  terrainActive,
   settingsActive,
   onToggleLayers,
-  onToggleTerrain,
   onToggleSettings,
 }: MapControlsProps) {
   const activeStateByControlId: Record<(typeof controls)[number]["id"], boolean> = {
     layers: layersActive,
-    terrain: terrainActive,
     settings: settingsActive,
   };
 
   const clickHandlerByControlId: Record<(typeof controls)[number]["id"], () => void> = {
     layers: onToggleLayers,
-    terrain: onToggleTerrain,
     settings: onToggleSettings,
   };
 

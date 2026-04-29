@@ -56,12 +56,48 @@
   html,
   body {
     @apply h-full w-full;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
   }
 
   body {
     @apply bg-[color:var(--bg-primary)] text-[color:var(--text-primary)] antialiased;
     font-family: var(--font-ui);
   }
+}
+
+/* Keep the map truly edge-to-edge without corner artifacts. */
+.mapboxgl-map,
+.mapboxgl-canvas,
+.mapboxgl-canvas-container {
+  border-radius: 0 !important;
+}
+
+/* Reduce attribution/logo visual noise while keeping required credits visible. */
+.mapboxgl-ctrl-bottom-left .mapboxgl-ctrl,
+.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl {
+  margin: 0 6px 2px 6px !important;
+}
+
+.mapboxgl-ctrl-logo {
+  transform: scale(0.72);
+  transform-origin: left bottom;
+  opacity: 0.78;
+}
+
+.mapboxgl-ctrl-attrib {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  padding: 2px 6px !important;
+  border-radius: 8px 8px 0 0;
+  background: rgba(255, 253, 250, 0.72) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mapboxgl-ctrl-attrib .mapbox-improve-map {
+  display: none !important;
 }
 
 .glass {

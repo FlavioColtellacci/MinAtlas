@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ interface FilterBarProps {
   onToggleCommodity: (commodity: string) => void;
   onToggleState: (state: string) => void;
   onToggleStatus: (status: string) => void;
+  onClearFilters: () => void;
 }
 
 const COMMODITY_LABELS: Record<string, string> = {
@@ -64,6 +65,7 @@ export default function FilterBar({
   onToggleCommodity,
   onToggleState,
   onToggleStatus,
+  onClearFilters,
 }: FilterBarProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -85,37 +87,6 @@ export default function FilterBar({
     })),
   ];
 
-  const suggestions = useMemo(
-    () =>
-      [
-        ...commodities
-          .filter((value) => !selectedCommodities.includes(value))
-          .slice(0, 2)
-          .map((value) => ({
-            id: `suggest-commodity-${value}`,
-            label: formatCommodityLabel(value),
-            onClick: () => onToggleCommodity(value),
-          })),
-        ...statuses
-          .filter((value) => !selectedStatuses.includes(value))
-          .slice(0, 2)
-          .map((value) => ({
-            id: `suggest-status-${value}`,
-            label: formatStatusLabel(value),
-            onClick: () => onToggleStatus(value),
-          })),
-        ...states
-          .filter((value) => !selectedStates.includes(value))
-          .slice(0, 2)
-          .map((value) => ({
-            id: `suggest-state-${value}`,
-            label: formatStateLabel(value),
-            onClick: () => onToggleState(value),
-          })),
-      ].slice(0, 5),
-    [commodities, onToggleCommodity, onToggleState, onToggleStatus, selectedCommodities, selectedStates, selectedStatuses, states, statuses],
-  );
-
   const hasActiveFilters = activeChips.length > 0;
 
   return (
@@ -124,6 +95,7 @@ export default function FilterBar({
         <button
           type="button"
           onClick={() => setIsPanelOpen((current) => !current)}
+          aria-expanded={isPanelOpen}
           className={cn(
             "glass inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition-all duration-200 ease-out",
             "hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]",
@@ -140,32 +112,6 @@ export default function FilterBar({
             </span>
           )}
         </button>
-
-        {activeChips.slice(0, 4).map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            onClick={chip.onRemove}
-            className={cn(
-              "glass inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm text-[color:var(--text-primary)]",
-              "transition-all duration-200 ease-out hover:border-[color:var(--accent)]",
-            )}
-          >
-            {chip.label}
-            <X className="h-3.5 w-3.5 text-[color:var(--text-tertiary)]" />
-          </button>
-        ))}
-
-        {suggestions.slice(0, 3).map((suggestion) => (
-          <button
-            key={suggestion.id}
-            type="button"
-            onClick={suggestion.onClick}
-            className="glass rounded-xl px-3 py-1.5 text-sm text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:text-[color:var(--text-primary)]"
-          >
-            + {suggestion.label}
-          </button>
-        ))}
       </div>
 
       <div
@@ -186,6 +132,39 @@ export default function FilterBar({
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
+
+          <div className="mb-4 space-y-3">
+            {hasActiveFilters && (
+              <section className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">Active filters</p>
+                  <button
+                    type="button"
+                    onClick={onClearFilters}
+                    className="rounded-lg border border-[color:var(--border-subtle)] px-2.5 py-1 text-xs text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]"
+                  >
+                    Clear filters
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {activeChips.map((chip) => (
+                    <button
+                      key={chip.id}
+                      type="button"
+                      onClick={chip.onRemove}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-lg border border-[color:var(--accent)] bg-[color:var(--accent-subtle)] px-2.5 py-1.5 text-sm text-[color:var(--text-primary)]",
+                        "transition-all duration-200 ease-out hover:bg-transparent",
+                      )}
+                    >
+                      {chip.label}
+                      <X className="h-3.5 w-3.5 text-[color:var(--text-tertiary)]" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">

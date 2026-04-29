@@ -18,38 +18,26 @@ function getStatusLabel(status: MineSite["status"]) {
 
 export default function DetailCard({ site }: DetailCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const displaySite = site ?? {
-    id: "demo-boddington",
-    name: "Boddington",
-    operator: "Newmont Corporation",
-    commodity: ["Au", "Cu"],
-    state: "Western Australia",
-    status: "operating" as const,
-    production_type: "open_cut" as const,
-    annual_production_oz: 850000,
-    roster: "8/6",
-    nearest_town: "Perth",
-    distance_to_perth_km: 120,
-    location: { coordinates: [116.0, -32.8] as [number, number] },
-  };
+  const hasSelection = Boolean(site);
 
-  const statusPill = displaySite.status === "operating" ? "Active" : "Tracked";
+  const statusPill = site?.status === "operating" ? "Active" : "Tracked";
 
   const annualProduction =
-    displaySite.annual_production_oz && displaySite.annual_production_oz > 1000
-      ? `${Math.round(displaySite.annual_production_oz / 1000)}k`
+    site?.annual_production_oz && site.annual_production_oz > 1000
+      ? `${Math.round(site.annual_production_oz / 1000)}k`
       : "n/a";
 
-  const productionType = displaySite.production_type
-    ? displaySite.production_type.replace("_", " ")
+  const productionType = site?.production_type
+    ? site.production_type.replace("_", " ")
     : "Unknown";
 
-  const commodityLabel = displaySite.commodity.length > 0 ? displaySite.commodity.join(" · ") : "n/a";
+  const commodityLabel = site?.commodity && site.commodity.length > 0 ? site.commodity.join(" · ") : "n/a";
 
   const locationLabel =
-    displaySite.distance_to_perth_km && displaySite.distance_to_perth_km > 0
-      ? `${displaySite.distance_to_perth_km}km from ${displaySite.nearest_town ?? "nearest town"}`
-      : displaySite.nearest_town ?? "Location unknown";
+    site?.distance_to_perth_km && site.distance_to_perth_km > 0
+      ? `${site.distance_to_perth_km}km from ${site.nearest_town ?? "nearest town"}`
+      : site?.nearest_town ?? "Location unknown";
+  const siteStatusLabel = site ? getStatusLabel(site.status) : null;
 
   return (
     <article
@@ -61,17 +49,19 @@ export default function DetailCard({ site }: DetailCardProps) {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
-            {getStatusLabel(displaySite.status)} · {displaySite.state ?? "Australia"}
+            {hasSelection ? `${siteStatusLabel} · ${site?.state ?? "Australia"}` : "No site selected"}
           </p>
           <h2 className="mt-1 font-display text-4xl leading-[1.12] text-[color:var(--text-primary)] break-words">
-            {displaySite.name}
+            {hasSelection ? site?.name : "Select a mining site"}
           </h2>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[color:var(--status-active-bg)] px-2.5 py-1 text-xs text-[color:var(--status-active)]">
-            {statusPill}
-          </span>
+          {hasSelection ? (
+            <span className="rounded-full bg-[color:var(--status-active-bg)] px-2.5 py-1 text-xs text-[color:var(--status-active)]">
+              {statusPill}
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => setIsMinimized((current) => !current)}
@@ -90,7 +80,9 @@ export default function DetailCard({ site }: DetailCardProps) {
         ].join(" ")}
       >
         <p className="text-sm text-[color:var(--text-secondary)]">
-          {displaySite.operator ?? "Unknown operator"} · {locationLabel}
+          {hasSelection
+            ? `${site?.operator ?? "Unknown operator"} · ${locationLabel}`
+            : "Click any mine marker on the map to view operator, production and commodity details."}
         </p>
 
         <div className="mt-4 grid grid-cols-4 gap-2 border-t border-[color:var(--border)] pt-3">
@@ -108,7 +100,7 @@ export default function DetailCard({ site }: DetailCardProps) {
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Roster</p>
-            <p className="mt-1 font-display text-2xl">{displaySite.roster ?? "n/a"}</p>
+            <p className="mt-1 font-display text-2xl">{site?.roster ?? "n/a"}</p>
           </div>
         </div>
       </div>

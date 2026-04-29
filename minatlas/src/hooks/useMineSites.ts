@@ -4,14 +4,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { MineSite, MineSiteRow } from "@/types/mining";
 
-async function fetchMineSites(): Promise<MineSite[]> {
-  const { data, error } = await supabase.from("mine_sites_public").select("*").limit(500);
+const MINE_SITE_PAGE_SIZE = 1000;
+const MINE_SITE_PAGE_COUNT = 4;
 
+async function fetchMineSites(): Promise<MineSite[]> {
+  const pages = await Promise.all(
+    Array.from({ length: MINE_SITE_PAGE_COUNT }, (_, pageIndex) => {
+      const from = pageIndex * MINE_SITE_PAGE_SIZE;
+      const to = from + MINE_SITE_PAGE_SIZE - 1;
+      return supabase.from("mine_sites_public").select("*").range(from, to);
+    }),
+  );
+
+  const error = pages.find((page) => page.error)?.error;
   if (error) {
     throw error;
   }
 
-  return ((data ?? []) as MineSiteRow[]).map((site) => ({
+  return pages.flatMap((page) => (page.data ?? []) as MineSiteRow[]).map((site) => ({
     id: site.id,
     name: site.name,
     operator: site.operator,

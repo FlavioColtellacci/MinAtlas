@@ -34,3 +34,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local raw geospatial seed datasets (large, source-of-truth files)
+src/data/seed/*/
+!src/data/seed/README.md

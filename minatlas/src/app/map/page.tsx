@@ -14,14 +14,66 @@ export default function MapPage() {
   const { data: mineSites = [] } = useMineSites();
   const { data: tenements = [] } = useTenements();
   const [selectedSite, setSelectedSite] = useState<MineSite | null>(null);
+  const [selectedCommodities, setSelectedCommodities] = useState<string[]>(["Gold"]);
+  const [selectedStates, setSelectedStates] = useState<string[]>(["Western Australia"]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["operating"]);
 
-  const visibleSites = useMemo(() => mineSites.slice(0, 2000), [mineSites]);
+  const commodities = useMemo(
+    () =>
+      Array.from(new Set(mineSites.flatMap((site) => site.commodity)))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b)),
+    [mineSites],
+  );
+
+  const states = useMemo(
+    () =>
+      Array.from(new Set(mineSites.map((site) => site.state).filter((state): state is string => Boolean(state)))).sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [mineSites],
+  );
+
+  const statuses = useMemo(
+    () => Array.from(new Set(mineSites.map((site) => site.status))).sort((a, b) => a.localeCompare(b)),
+    [mineSites],
+  );
+
+  const visibleSites = useMemo(
+    () =>
+      mineSites
+        .filter((site) => {
+          const commodityMatches =
+            selectedCommodities.length === 0 || site.commodity.some((commodity) => selectedCommodities.includes(commodity));
+          const stateMatches = selectedStates.length === 0 || (site.state ? selectedStates.includes(site.state) : false);
+          const statusMatches = selectedStatuses.length === 0 || selectedStatuses.includes(site.status);
+          return commodityMatches && stateMatches && statusMatches;
+        })
+        .slice(0, 2000),
+    [mineSites, selectedCommodities, selectedStates, selectedStatuses],
+  );
+
+  const visibleTenements = useMemo(
+    () =>
+      tenements.filter((tenement) => {
+        const commodityMatches =
+          selectedCommodities.length === 0 ||
+          tenement.commodity.some((commodity) => selectedCommodities.includes(commodity));
+        const stateMatches = selectedStates.length === 0 || (tenement.state ? selectedStates.includes(tenement.state) : false);
+        return commodityMatches && stateMatches;
+      }),
+    [selectedCommodities, selectedStates, tenements],
+  );
+
+  const toggleValue = (value: string, current: string[], setValue: (next: string[]) => void) => {
+    setValue(current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
+  };
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-map">
       <MapCanvas
         mineSites={visibleSites}
-        tenements={tenements}
+        tenements={visibleTenements}
         selectedSite={selectedSite}
         onSelectSite={setSelectedSite}
       />
@@ -32,7 +84,17 @@ export default function MapPage() {
       </div>
 
       <div className="absolute left-[18px] top-[76px] z-20">
-        <FilterBar />
+        <FilterBar
+          commodities={commodities}
+          states={states}
+          statuses={statuses}
+          selectedCommodities={selectedCommodities}
+          selectedStates={selectedStates}
+          selectedStatuses={selectedStatuses}
+          onToggleCommodity={(commodity) => toggleValue(commodity, selectedCommodities, setSelectedCommodities)}
+          onToggleState={(state) => toggleValue(state, selectedStates, setSelectedStates)}
+          onToggleStatus={(status) => toggleValue(status, selectedStatuses, setSelectedStatuses)}
+        />
       </div>
 
       <div className="absolute bottom-4 right-[18px] z-20">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DeckGL from "@deck.gl/react";
 import mapboxgl from "mapbox-gl";
 import Map, { type MapRef, NavigationControl } from "react-map-gl/mapbox";
@@ -21,6 +21,7 @@ interface MapCanvasProps {
 export default function MapCanvas({ mineSites, tenements, selectedSite, onSelectSite }: MapCanvasProps) {
   const mapRef = useRef<MapRef | null>(null);
   const hasPlayedIntro = useRef(false);
+  const [hoveredSite, setHoveredSite] = useState<MineSite | null>(null);
 
   const layers = useMemo(
     () =>
@@ -29,9 +30,34 @@ export default function MapCanvas({ mineSites, tenements, selectedSite, onSelect
         tenements,
         selectedSiteId: selectedSite?.id ?? null,
         onSelectSite,
+        onHoverSite: (site) => {
+          if (!site) {
+            setHoveredSite(null);
+            return;
+          }
+
+          setHoveredSite(site);
+        },
       }),
     [mineSites, onSelectSite, selectedSite?.id, tenements],
   );
+
+  useEffect(() => {
+    if (!selectedSite) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    if (!hasPlayedIntro.current) return;
+
+    map.flyTo({
+      center: selectedSite.location.coordinates,
+      zoom: Math.max(map.getZoom(), 6.8),
+      pitch: 48,
+      bearing: map.getBearing(),
+      duration: 1800,
+      curve: 1.22,
+      essential: true,
+    });
+  }, [selectedSite]);
 
   const handleMapLoad = () => {
     const map = mapRef.current?.getMap();
@@ -85,7 +111,10 @@ export default function MapCanvas({ mineSites, tenements, selectedSite, onSelect
           bearing: 0,
         }}
         onClick={(info) => {
-          if (!info.object) onSelectSite(null);
+          if (!info.object) {
+            setHoveredSite(null);
+            onSelectSite(null);
+          }
         }}
       >
         <Map
@@ -100,6 +129,15 @@ export default function MapCanvas({ mineSites, tenements, selectedSite, onSelect
           <NavigationControl position="bottom-right" showCompass={false} />
         </Map>
       </DeckGL>
+
+      {hoveredSite && (
+        <div className="glass pointer-events-none absolute left-4 top-28 z-30 rounded-xl px-3 py-2 text-xs">
+          <p className="font-medium text-[color:var(--text-primary)]">{hoveredSite.name}</p>
+          <p className="text-[color:var(--text-secondary)]">
+            {hoveredSite.operator ?? "Unknown operator"} · {hoveredSite.state ?? "Australia"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

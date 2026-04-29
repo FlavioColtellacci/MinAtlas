@@ -9,6 +9,7 @@ interface MiningLayersOptions {
   tenements: Tenement[];
   selectedSiteId: string | null;
   onSelectSite: (site: MineSite | null) => void;
+  onHoverSite: (site: MineSite | null) => void;
 }
 
 export function createMiningLayers({
@@ -16,6 +17,7 @@ export function createMiningLayers({
   tenements,
   selectedSiteId,
   onSelectSite,
+  onHoverSite,
 }: MiningLayersOptions): Layer[] {
   const tenementFeatures: GeoJSON.Feature[] = tenements
     .filter((tenement) => tenement.boundary)
@@ -61,6 +63,12 @@ export function createMiningLayers({
         const pickedSite = (info.object as MineSite | undefined) ?? null;
         onSelectSite(pickedSite);
       },
+      onHover: (info) => {
+        const pickedSite = (info.object as MineSite | undefined) ?? null;
+        onHoverSite(pickedSite);
+      },
+      autoHighlight: true,
+      highlightColor: [184, 125, 69, 120],
       updateTriggers: {
         getRadius: [selectedSiteId],
         getFillColor: [selectedSiteId],

@@ -6,6 +6,43 @@ import type { MineSite, MineSiteRow } from "@/types/mining";
 
 const MINE_SITE_PAGE_SIZE = 1000;
 const MINE_SITE_PAGE_COUNT = 4;
+const MAIN_COMMODITY_CODES = new Set(["AG", "AU", "BI", "CO", "CU", "LI", "NI", "PB", "SB", "ZN"]);
+const COMMODITY_ALIASES: Record<string, string> = {
+  SILVER: "AG",
+  AG: "AG",
+  GOLD: "AU",
+  AU: "AU",
+  BISMUTH: "BI",
+  BI: "BI",
+  COBALT: "CO",
+  CO: "CO",
+  COPPER: "CU",
+  CU: "CU",
+  LITHIUM: "LI",
+  LI: "LI",
+  NICKEL: "NI",
+  NI: "NI",
+  LEAD: "PB",
+  PB: "PB",
+  ANTIMONY: "SB",
+  SB: "SB",
+  ZINC: "ZN",
+  ZN: "ZN",
+};
+
+function normalizeCommodity(value: string) {
+  const normalized = value
+    .trim()
+    .toUpperCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return null;
+  const mapped = COMMODITY_ALIASES[normalized];
+  if (!mapped || !MAIN_COMMODITY_CODES.has(mapped)) return null;
+  return mapped;
+}
 
 async function fetchMineSites(): Promise<MineSite[]> {
   const pages = await Promise.all(
@@ -25,7 +62,9 @@ async function fetchMineSites(): Promise<MineSite[]> {
     id: site.id,
     name: site.name,
     operator: site.operator,
-    commodity: site.commodity ?? [],
+    commodity: Array.from(
+      new Set((site.commodity ?? []).map((value) => normalizeCommodity(value)).filter((value): value is string => Boolean(value))),
+    ),
     state: site.state,
     status: site.status,
     production_type: site.production_type,

@@ -23,6 +23,7 @@ const COMMODITY_LABELS: Record<string, string> = {
   BI: "Bismuth",
   CO: "Cobalt",
   CU: "Copper",
+  LI: "Lithium",
   NI: "Nickel",
   PB: "Lead",
   SB: "Antimony",

@@ -25,6 +25,29 @@ const paths = {
 };
 
 const statusPriority = ["operating", "care_maintenance", "development", "exploration", "closed"];
+const MAIN_COMMODITY_CODES = new Set(["AG", "AU", "BI", "CO", "CU", "LI", "NI", "PB", "SB", "ZN"]);
+const COMMODITY_ALIASES = new Map([
+  ["SILVER", "AG"],
+  ["AG", "AG"],
+  ["GOLD", "AU"],
+  ["AU", "AU"],
+  ["BISMUTH", "BI"],
+  ["BI", "BI"],
+  ["COBALT", "CO"],
+  ["CO", "CO"],
+  ["COPPER", "CU"],
+  ["CU", "CU"],
+  ["LITHIUM", "LI"],
+  ["LI", "LI"],
+  ["NICKEL", "NI"],
+  ["NI", "NI"],
+  ["LEAD", "PB"],
+  ["PB", "PB"],
+  ["ANTIMONY", "SB"],
+  ["SB", "SB"],
+  ["ZINC", "ZN"],
+  ["ZN", "ZN"],
+]);
 
 function getFirst(properties, keys, fallback = null) {
   for (const key of keys) {
@@ -42,16 +65,27 @@ function asNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function normalizeCommodity(item) {
+  const normalized = String(item ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return null;
+  return COMMODITY_ALIASES.get(normalized) ?? null;
+}
+
 function toCommodityList(...values) {
   const merged = values
     .flatMap((value) => {
       if (!value) return [];
       if (Array.isArray(value)) return value;
-      return String(value).split(/[;,/]|(?<=\w)\s(?=\w{2,})/g);
+      return String(value).split(/[;,/|]+|\band\b/gi);
     })
-    .map((item) => String(item).trim())
-    .filter(Boolean)
-    .filter((item) => item.toLowerCase() !== "null");
+    .map((item) => normalizeCommodity(item))
+    .filter((item) => Boolean(item) && MAIN_COMMODITY_CODES.has(item));
 
   return [...new Set(merged)];
 }

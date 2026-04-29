@@ -17,6 +17,11 @@ export default function MapPage() {
   const [selectedCommodities, setSelectedCommodities] = useState<string[]>(["Gold"]);
   const [selectedStates, setSelectedStates] = useState<string[]>(["Western Australia"]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(["operating"]);
+  const [mapControls, setMapControls] = useState<{
+    zoomIn: () => void;
+    zoomOut: () => void;
+    flyToAustralia: () => void;
+  } | null>(null);
 
   const commodities = useMemo(
     () =>
@@ -76,6 +81,7 @@ export default function MapPage() {
         tenements={visibleTenements}
         selectedSite={selectedSite}
         onSelectSite={setSelectedSite}
+        onControlsReady={setMapControls}
       />
 
       <div className="absolute left-[18px] right-[18px] top-[18px] z-20 flex items-center justify-between gap-3">
@@ -99,11 +105,19 @@ export default function MapPage() {
 
       <div className="absolute bottom-4 right-[18px] z-20">
         <div className="glass flex flex-col overflow-hidden rounded-xl">
-          <button type="button" className="px-3 py-2 text-xl text-[color:var(--text-secondary)]">
+          <button
+            type="button"
+            onClick={() => mapControls?.zoomIn()}
+            className="px-3 py-2 text-xl text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
+          >
             +
           </button>
           <div className="h-px w-full bg-[color:var(--border-subtle)]" />
-          <button type="button" className="px-3 py-2 text-xl text-[color:var(--text-secondary)]">
+          <button
+            type="button"
+            onClick={() => mapControls?.zoomOut()}
+            className="px-3 py-2 text-xl text-[color:var(--text-secondary)] transition-colors hover:text-[color:var(--text-primary)]"
+          >
             -
           </button>
         </div>

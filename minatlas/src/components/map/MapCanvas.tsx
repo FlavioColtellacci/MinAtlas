@@ -16,9 +16,16 @@ interface MapCanvasProps {
   tenements: Tenement[];
   selectedSite: MineSite | null;
   onSelectSite: (site: MineSite | null) => void;
+  onControlsReady?: (controls: { zoomIn: () => void; zoomOut: () => void; flyToAustralia: () => void }) => void;
 }
 
-export default function MapCanvas({ mineSites, tenements, selectedSite, onSelectSite }: MapCanvasProps) {
+export default function MapCanvas({
+  mineSites,
+  tenements,
+  selectedSite,
+  onSelectSite,
+  onControlsReady,
+}: MapCanvasProps) {
   const mapRef = useRef<MapRef | null>(null);
   const hasPlayedIntro = useRef(false);
   const [hoveredSite, setHoveredSite] = useState<MineSite | null>(null);
@@ -63,6 +70,33 @@ export default function MapCanvas({ mineSites, tenements, selectedSite, onSelect
     const map = mapRef.current?.getMap();
     if (!map) return;
 
+    const flyToAustralia = () => {
+      map.flyTo({
+        center: WA_TARGET,
+        zoom: 5.8,
+        pitch: 52,
+        bearing: -15,
+        duration: 5200,
+        essential: true,
+        curve: 1.5,
+      });
+    };
+
+    const smoothEaseToZoom = (delta: number) => {
+      map.easeTo({
+        zoom: Math.max(2, Math.min(14, map.getZoom() + delta)),
+        duration: 850,
+        essential: true,
+        easing: (t) => 1 - (1 - t) ** 4,
+      });
+    };
+
+    onControlsReady?.({
+      zoomIn: () => smoothEaseToZoom(0.8),
+      zoomOut: () => smoothEaseToZoom(-0.8),
+      flyToAustralia,
+    });
+
     map.setFog({
       color: "rgb(235, 230, 220)",
       "high-color": "rgb(200, 215, 230)",
@@ -78,24 +112,26 @@ export default function MapCanvas({ mineSites, tenements, selectedSite, onSelect
       maxzoom: 14,
     });
 
+    // Tune interaction inertia for a more premium, fluid map feel.
+    map.scrollZoom.setWheelZoomRate(1 / 700);
+    map.scrollZoom.setZoomRate(1 / 120);
+    map.dragPan.enable({
+      linearity: 0.2,
+      easing: (t) => t,
+      maxSpeed: 1600,
+      deceleration: 2800,
+    });
+
     if (hasPlayedIntro.current) return;
     hasPlayedIntro.current = true;
 
     window.setTimeout(() => {
-      map.flyTo({
-        center: WA_TARGET,
-        zoom: 5.8,
-        pitch: 52,
-        bearing: -15,
-        duration: 4800,
-        essential: true,
-        curve: 1.4,
-      });
+      flyToAustralia();
 
       map.once("moveend", () => {
         map.setTerrain({ source: "mapbox-dem", exaggeration: 1.6 });
       });
-    }, 2000);
+    }, 750);
   };
 
   return (

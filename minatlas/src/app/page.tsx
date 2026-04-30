@@ -8,6 +8,7 @@ import styles from "./page.module.css";
 
 export default function Home() {
   const parallaxRef = useRef<HTMLDivElement>(null);
+  const cursorGlowRef = useRef<HTMLDivElement>(null);
 
   const handleTitlePointerMove = (event: ReactPointerEvent<HTMLHeadingElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -59,8 +60,52 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const glow = cursorGlowRef.current;
+    if (!glow) return;
+
+    const finePointer = window.matchMedia("(pointer: fine)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!finePointer || reducedMotion) return;
+
+    glow.style.opacity = "0";
+    let raf = 0;
+    let nextX = 0;
+    let nextY = 0;
+
+    const render = () => {
+      glow.style.transform = `translate3d(${nextX - 120}px, ${nextY - 120}px, 0)`;
+      raf = 0;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      nextX = event.clientX;
+      nextY = event.clientY;
+      glow.style.opacity = "1";
+      if (!raf) raf = window.requestAnimationFrame(render);
+    };
+
+    const onPointerLeave = () => {
+      glow.style.opacity = "0";
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerleave", onPointerLeave);
+
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerleave", onPointerLeave);
+    };
+  }, []);
+
   return (
     <main className={styles.root}>
+      <div
+        ref={cursorGlowRef}
+        className="pointer-events-none fixed left-0 top-0 z-40 h-60 w-60 rounded-full bg-[radial-gradient(circle,rgba(184,125,69,0.2)_0%,rgba(184,125,69,0.08)_36%,rgba(184,125,69,0)_72%)] blur-2xl transition-opacity duration-300"
+        aria-hidden
+      />
       <div className={styles.beams} aria-hidden />
 
       <div className={styles.stage} aria-hidden>
@@ -89,12 +134,12 @@ export default function Home() {
       <nav className={styles.nav} aria-label="Primary">
         <div className={styles.logo}>MinAtlas</div>
         <div className={styles.navLinks}>
-          <a href="#product" className={styles.navLink}>
+          <Link href="/product" className={styles.navLink}>
             Product
-          </a>
-          <a href="#data" className={styles.navLink}>
+          </Link>
+          <Link href="/product#data" className={styles.navLink}>
             Data
-          </a>
+          </Link>
           <span className={styles.navSep} aria-hidden />
           <span className={styles.livePill}>
             <span className={styles.liveDot} aria-hidden />

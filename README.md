@@ -9,7 +9,7 @@ It transforms public mining datasets into a fast, modern, visually refined produ
 - exploration and geology users
 - mining-focused investors
 
-## Product Summary
+## Website Overview
 
 MinAtlas is built to make discovery, filtering, and contextual mine-site research dramatically easier than legacy GIS interfaces.
 
@@ -20,7 +20,14 @@ The current product direction emphasizes:
 - restrained visual language and typography-led hierarchy
 - performance-first interaction patterns
 
-## Data and Security
+## Core Pages and Experience
+
+- `/` - landing page with product positioning and CTA into the atlas.
+- `/map` - core interactive map experience for mine-site exploration.
+- `/data` - supporting data-focused narrative and product context.
+- `/product` - product positioning and feature communication.
+
+## Data, Privacy, and Security
 
 - Data comes from publicly available government sources and is normalized for application use.
 - No credentials, tokens, or private keys are documented in this README.
@@ -59,6 +66,53 @@ NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_public_token
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+## Website Configuration (Production)
+
+### Domain and Canonical Host
+
+- Primary domain: `https://minatlas.app`
+- Vercel default domain: `https://minatlas.vercel.app` (redirects to canonical host)
+
+### Environment Variables (Vercel)
+
+Set these in Vercel Project Settings -> Environment Variables (at least for Production):
+
+```env
+NEXT_PUBLIC_MAPBOX_TOKEN=...
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+```
+
+Notes:
+
+- `NEXT_PUBLIC_*` variables are exposed to browser code and are appropriate for public client keys.
+- Never add service-role or secret keys to `NEXT_PUBLIC_*`.
+
+### Analytics and Search Integrations
+
+- Google Analytics (GA4) is loaded globally in `minatlas/src/app/layout.tsx`.
+- AdSense account verification meta tag is defined in `minatlas/src/app/layout.tsx`.
+- Search Console HTML verification file is served from:
+  - `minatlas/public/google2f74e2ce075c9b6c.html`
+  - Public URL: `https://minatlas.app/google2f74e2ce075c9b6c.html`
+
+## Deployment Workflow
+
+1. Commit and push changes to `main`.
+2. Vercel builds and deploys the latest `main` commit.
+3. Verify critical checks after deploy:
+   - home page loads on `https://minatlas.app`
+   - GA tag appears and events show in GA4 Realtime
+   - Search Console verification file is reachable
+   - AdSense verification meta is present in page source
+
+## Operational Notes
+
+- Keep local tooling artifacts out of source control (`.cursor/` is ignored).
+- Keep local env files local-only (`.env*.local` ignored in app workspace).
+- Prefer small, focused commits for deploy-critical changes.
 
 ## Ownership and License
 

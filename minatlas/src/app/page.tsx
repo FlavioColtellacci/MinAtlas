@@ -182,9 +182,9 @@ export default function Home() {
                 />
               </svg>
             </Link>
-            <a href="#how" className={styles.btnGhost}>
+            <Link href="/product#how" className={styles.btnGhost}>
               How it works
-            </a>
+            </Link>
           </div>
         </div>
       </section>

@@ -142,16 +142,23 @@ export default function ProductPage() {
   const cursorGlowRef = useRef<HTMLDivElement>(null);
   const [visibleSections, setVisibleSections] = useState<Set<string>>(() => new Set());
   const [activeSection, setActiveSection] = useState("overview");
-  const handleNavClick = (sectionId: string) => (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    setActiveSection((prev) => (prev === sectionId ? prev : sectionId));
+  const scrollToSection = (sectionId: string, smooth: boolean) => {
     const root = scrollRef.current;
     if (!root) return;
+
     const target = root.querySelector<HTMLElement>(`#${sectionId}`);
     if (!target) return;
+
     const targetTop =
       target.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop - 84;
     const clampedTargetTop = Math.max(targetTop, 0);
+
+    if (!smooth) {
+      root.scrollTop = clampedTargetTop;
+      setActiveSection((prev) => (prev === sectionId ? prev : sectionId));
+      return;
+    }
+
     const startTop = root.scrollTop;
     const delta = clampedTargetTop - startTop;
     const duration = 900;
@@ -179,6 +186,23 @@ export default function ProductPage() {
 
     scrollAnimRef.current = window.requestAnimationFrame(tick);
   };
+
+  const handleNavClick = (sectionId: string) => (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    setActiveSection((prev) => (prev === sectionId ? prev : sectionId));
+    scrollToSection(sectionId, true);
+  };
+
+  useEffect(() => {
+    const sectionId = decodeURIComponent(window.location.hash.replace("#", ""));
+    if (!sectionId || !navItems.some((item) => item.id === sectionId)) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      scrollToSection(sectionId, false);
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     const root = scrollRef.current;

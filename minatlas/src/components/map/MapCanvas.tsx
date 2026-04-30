@@ -83,6 +83,7 @@ export default function MapCanvas({
   const hasPlayedIntro = useRef(false);
   const hasLoadedMap = useRef(false);
   const hasAttachedMapHandlers = useRef(false);
+  const mapHandlerCleanupRef = useRef<(() => void) | null>(null);
   const telemetryFrameRef = useRef<number | null>(null);
   const lastTelemetryRef = useRef<MapTelemetry | null>(null);
   const temporaryAutoRotateRef = useRef(false);
@@ -508,19 +509,24 @@ export default function MapCanvas({
     if (hasAttachedMapHandlers.current) return;
     hasAttachedMapHandlers.current = true;
 
-    map.on("move", () => scheduleTelemetry(map));
-    map.on("zoom", () => scheduleTelemetry(map));
-    map.on("rotate", () => scheduleTelemetry(map));
-    map.on("pitch", () => scheduleTelemetry(map));
-    map.on("moveend", () => emitTelemetry(map));
-    map.on("click", MINE_SITES_LAYER_ID, (event) => {
+    const handleMove = () => scheduleTelemetry(map);
+    const handleMoveEnd = () => emitTelemetry(map);
+    const handleMineSiteClick = (event: mapboxgl.MapLayerMouseEvent) => {
+      event.originalEvent.stopPropagation();
       const feature = event.features?.[0];
       const id = feature?.properties?.id as string | undefined;
       if (!id) return;
       const site = mineSitesRef.current.find((item) => item.id === id) ?? null;
       onSelectSite(site);
-    });
-    map.on("mousemove", MINE_SITES_LAYER_ID, (event) => {
+    };
+    const handleMapClick = (event: mapboxgl.MapMouseEvent) => {
+      const hitMineSite = map.queryRenderedFeatures(event.point, { layers: [MINE_SITES_LAYER_ID] }).length > 0;
+      if (!hitMineSite) {
+        setHoveredSite(null);
+        onSelectSite(null);
+      }
+    };
+    const handleMineSiteMouseMove = (event: mapboxgl.MapLayerMouseEvent) => {
       const feature = event.features?.[0];
       const id = feature?.properties?.id as string | undefined;
       if (!id) {
@@ -530,11 +536,35 @@ export default function MapCanvas({
       const site = mineSitesRef.current.find((item) => item.id === id) ?? null;
       setHoveredSite(site);
       map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", MINE_SITES_LAYER_ID, () => {
+    };
+    const handleMineSiteMouseLeave = () => {
       setHoveredSite(null);
       map.getCanvas().style.cursor = "";
-    });
+    };
+
+    map.on("move", handleMove);
+    map.on("zoom", handleMove);
+    map.on("rotate", handleMove);
+    map.on("pitch", handleMove);
+    map.on("moveend", handleMoveEnd);
+    map.on("click", MINE_SITES_LAYER_ID, handleMineSiteClick);
+    map.on("click", handleMapClick);
+    map.on("mousemove", MINE_SITES_LAYER_ID, handleMineSiteMouseMove);
+    map.on("mouseleave", MINE_SITES_LAYER_ID, handleMineSiteMouseLeave);
+
+    mapHandlerCleanupRef.current = () => {
+      map.off("move", handleMove);
+      map.off("zoom", handleMove);
+      map.off("rotate", handleMove);
+      map.off("pitch", handleMove);
+      map.off("moveend", handleMoveEnd);
+      map.off("click", MINE_SITES_LAYER_ID, handleMineSiteClick);
+      map.off("click", handleMapClick);
+      map.off("mousemove", MINE_SITES_LAYER_ID, handleMineSiteMouseMove);
+      map.off("mouseleave", MINE_SITES_LAYER_ID, handleMineSiteMouseLeave);
+      hasAttachedMapHandlers.current = false;
+      mapHandlerCleanupRef.current = null;
+    };
   };
 
   const initializeLoadedMap = (map: mapboxgl.Map) => {
@@ -872,6 +902,9 @@ export default function MapCanvas({
       if (telemetryFrameRef.current !== null) {
         window.cancelAnimationFrame(telemetryFrameRef.current);
       }
+      if (mapHandlerCleanupRef.current) {
+        mapHandlerCleanupRef.current();
+      }
     },
     [],
   );
@@ -890,7 +923,6 @@ export default function MapCanvas({
         mapStyle={mapStyleUrl || MAP_STYLE}
         projection="globe"
         renderWorldCopies={false}
-        reuseMaps
         mapLib={mapboxgl}
         initialViewState={{
           longitude: INITIAL_AUSTRALIA_VIEW.longitude,
@@ -898,10 +930,6 @@ export default function MapCanvas({
           zoom: INITIAL_AUSTRALIA_VIEW.zoom,
           pitch: INITIAL_AUSTRALIA_VIEW.pitch,
           bearing: INITIAL_AUSTRALIA_VIEW.bearing,
-        }}
-        onClick={() => {
-          setHoveredSite(null);
-          onSelectSite(null);
         }}
         onLoad={handleMapLoad}
         onStyleData={() => {
@@ -925,8 +953,13 @@ export default function MapCanvas({
               <button
                 type="button"
                 aria-label={`Select ${site.name}`}
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  event.nativeEvent.stopImmediatePropagation();
+                }}
                 onClick={(event) => {
                   event.stopPropagation();
+                  event.nativeEvent.stopImmediatePropagation();
                   onSelectSite(site);
                 }}
                 onMouseEnter={() => setHoveredSite(site)}

@@ -711,7 +711,7 @@ export default function MapPage() {
         <p className="text-xs text-[color:var(--text-tertiary)]">Settings are saved automatically on this device.</p>
       </div>
 
-      <div className="absolute bottom-10 right-[18px] z-20 flex flex-col items-end gap-2">
+      <div className="absolute bottom-10 right-[18px] z-20 flex flex-col items-end gap-1">
         <div className="flex items-end gap-2">
           <CompassControl
             bearingDeg={mapTelemetry.bearingDeg}

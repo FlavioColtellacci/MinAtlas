@@ -270,7 +270,8 @@ export default function MapCanvas({
     }
   };
 
-  const applyTerrainMode = (map: mapboxgl.Map) => {
+  const applyTerrainMode = (map: mapboxgl.Map, options: { animateCamera?: boolean } = {}) => {
+    const animateCamera = options.animateCamera ?? true;
     if (!ensureTerrainSource(map)) return;
     ensureHillshadeLayer(map);
 
@@ -282,6 +283,7 @@ export default function MapCanvas({
       if (map.getLayer(MINE_SITES_LAYER_ID)) {
         map.moveLayer(MINE_SITES_LAYER_ID);
       }
+      if (!animateCamera) return;
       map.easeTo({
         pitch: Math.min(Math.max(map.getPitch(), 78), pitchLimit),
         zoom: Math.max(map.getZoom(), 8.2),
@@ -296,6 +298,7 @@ export default function MapCanvas({
     if (map.getLayer(HILLSHADE_LAYER_ID)) {
       map.setLayoutProperty(HILLSHADE_LAYER_ID, "visibility", "none");
     }
+    if (!animateCamera) return;
     map.easeTo({
       pitch: Math.min(map.getPitch(), Math.min(24, pitchLimit)),
       duration: 950 * smoothnessMultiplier,
@@ -569,8 +572,19 @@ export default function MapCanvas({
     if (hasPlayedIntro.current) return;
     hasPlayedIntro.current = true;
 
-    applyTerrainMode(map);
+    const shouldPlayLandingIntro =
+      typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intro") === "landing";
+
+    applyTerrainMode(map, { animateCamera: false });
     window.setTimeout(() => {
+      if (shouldPlayLandingIntro) {
+        map.jumpTo({
+          center: GLOBE_CENTER,
+          zoom: 2.35,
+          pitch: 0,
+          bearing: 0,
+        });
+      }
       controls.flyToAustralia();
     }, 80);
   };
@@ -896,7 +910,7 @@ export default function MapCanvas({
           ensureTerrainSource(map);
           ensureDataLayers(map);
           applyLabelDensity(map);
-          applyTerrainMode(map);
+          applyTerrainMode(map, { animateCamera: false });
         }}
       >
         {mineSites.map((site) => {

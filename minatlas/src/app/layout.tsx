@@ -6,6 +6,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "MinAtlas",
   description: "Premium map-first mining intelligence for Australia.",
+  other: {
+    "google-adsense-account": "ca-pub-6113308150656934",
+  },
   icons: {
     icon: "/icon.svg",
     shortcut: "/icon.svg",

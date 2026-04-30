@@ -23,7 +23,7 @@ const navItems = [
 
 const mapBullets = [
   "Interactive layers by commodity, status and region",
-  "Real-time data from DMIRS and Geoscience Australia",
+  "Updated daily from DMIRS and Geoscience Australia",
   "2,847+ mine sites across Australia",
 ];
 
@@ -32,7 +32,7 @@ const pillars = [
     icon: Map,
     title: "Explore",
     copy:
-      "Navigate WA's full mining footprint by region, commodity, operator or status. Move from a national view to site-level context without fighting legacy GIS tools.",
+      "Navigate WA's full mining footprint by region, commodity, operator or status. Move from a national view to site-level context without opening a single government portal.",
   },
   {
     icon: BarChart2,
@@ -113,7 +113,7 @@ const audiences = [
 const stats = [
   { value: "2,847+", label: "Mine sites" },
   { value: "Daily", label: "Refresh cadence" },
-  { value: "Free", label: "Public data sources" },
+  { value: "Official", label: "Data sources" },
 ];
 
 const sources = [
@@ -622,7 +622,7 @@ export default function ProductPage() {
         <Reveal id="data" className="bg-[rgba(255,253,250,0.025)] px-5 py-24 text-center sm:px-8 lg:px-12">
           <div className="mx-auto max-w-6xl">
             <h2 className="font-display text-5xl tracking-[-0.045em] sm:text-7xl">
-              Built on real government data.
+              Built on Australia&apos;s public mining record.
             </h2>
             <div className="mt-12 grid gap-5 md:grid-cols-3">
               {stats.map((stat) => (
@@ -654,7 +654,7 @@ export default function ProductPage() {
               ))}
             </div>
             <p className="mt-8 font-mono text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
-              Ingested nightly at 02:00 via live ArcGIS REST endpoints. Upserted, never overwritten.
+              Refreshed nightly. Every record verified against the source.
             </p>
           </div>
         </Reveal>

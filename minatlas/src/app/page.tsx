@@ -137,7 +137,7 @@ export default function Home() {
           <Link href="/product" className={styles.navLink}>
             Product
           </Link>
-          <Link href="/product#data" className={styles.navLink}>
+          <Link href="/data" className={styles.navLink}>
             Data
           </Link>
           <span className={styles.navSep} aria-hidden />
@@ -150,11 +150,6 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.heroInner}>
-          <div className={styles.eyebrow}>
-            <span className={styles.eyebrowDot} aria-hidden />
-            Australian Mining Intelligence
-          </div>
-
           <h1 className={styles.title} onPointerMove={handleTitlePointerMove}>
             Min<em className={styles.titleAccent}>Atlas</em>
           </h1>

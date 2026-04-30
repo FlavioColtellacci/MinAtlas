@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, type PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 
 import styles from "./page.module.css";
 
 export default function Home() {
   const parallaxRef = useRef<HTMLDivElement>(null);
 
-  const handleTitlePointerMove = (event: PointerEvent<HTMLHeadingElement>) => {
+  const handleTitlePointerMove = (event: ReactPointerEvent<HTMLHeadingElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     event.currentTarget.style.setProperty("--shine-x", `${event.clientX - rect.left}px`);
     event.currentTarget.style.setProperty("--shine-y", `${event.clientY - rect.top}px`);
@@ -32,7 +32,7 @@ export default function Home() {
     let currentY = 0;
     let raf = 0;
 
-    const onMove = (e: PointerEvent) => {
+    const onMove = (e: globalThis.PointerEvent) => {
       const w = window.innerWidth;
       const h = window.innerHeight;
       targetX = (e.clientX / w - 0.5) * 2;

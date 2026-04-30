@@ -313,29 +313,41 @@ export default function ProductPage() {
       />
       <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_18%_12%,rgba(184,125,69,0.13),transparent_28%),radial-gradient(circle_at_78%_28%,rgba(61,158,95,0.08),transparent_30%),linear-gradient(180deg,#07050a_0%,#0b070a_54%,#07050a_100%)]" />
 
-      <nav className="sticky top-0 z-50 flex justify-center border-b border-[var(--border)] bg-[rgba(7,5,10,0.72)] px-4 py-3 backdrop-blur-2xl">
-        <div className="flex max-w-full items-center gap-2 overflow-x-auto">
-          <Link
-            href="/"
-            className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
-          >
-            Home
-          </Link>
-          <div className="flex max-w-full gap-2 rounded-full border border-[var(--border)] bg-[var(--glass)] p-1 shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
-          {navItems.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              onClick={handleNavClick(item.id)}
-              className={cn(
-                "whitespace-nowrap cursor-pointer select-none rounded-full px-4 py-2 text-xs font-medium tracking-[0.08em] text-[var(--text-muted)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.38)] hover:bg-[rgba(184,125,69,0.14)] hover:text-[rgba(255,253,250,0.9)] hover:shadow-[0_0_20px_rgba(184,125,69,0.18)]",
-                activeSection === item.id &&
-                  "bg-[rgba(184,125,69,0.18)] text-[rgba(255,253,250,0.93)] shadow-[0_0_28px_rgba(184,125,69,0.14)]",
-              )}
+      <nav className="sticky top-0 z-50 border-b border-[var(--border)] bg-[rgba(7,5,10,0.72)] px-4 py-3 backdrop-blur-2xl">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center">
+          <div className="flex justify-end pr-2">
+            <Link
+              href="/"
+              className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
             >
-              {item.label}
-            </a>
-          ))}
+              Home
+            </Link>
+          </div>
+
+          <div className="flex max-w-full gap-2 overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--glass)] p-1 shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
+            {navItems.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                onClick={handleNavClick(item.id)}
+                className={cn(
+                  "whitespace-nowrap cursor-pointer select-none rounded-full px-4 py-2 text-xs font-medium tracking-[0.08em] text-[var(--text-muted)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.38)] hover:bg-[rgba(184,125,69,0.14)] hover:text-[rgba(255,253,250,0.9)] hover:shadow-[0_0_20px_rgba(184,125,69,0.18)]",
+                  activeSection === item.id &&
+                    "bg-[rgba(184,125,69,0.18)] text-[rgba(255,253,250,0.93)] shadow-[0_0_28px_rgba(184,125,69,0.14)]",
+                )}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+
+          <div className="flex justify-start pl-2">
+            <Link
+              href="/data"
+              className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
+            >
+              Data
+            </Link>
           </div>
         </div>
       </nav>
@@ -368,11 +380,10 @@ export default function ProductPage() {
               MinAtlas Product
             </p>
             <h1 className="max-w-5xl font-display text-[clamp(3.7rem,9vw,8.5rem)] font-normal leading-[0.9] tracking-[-0.055em] text-[rgba(255,253,250,0.96)]">
-              Mining intelligence that moves as fast as the market.
+              Australia&apos;s mining intelligence, finally built right.
             </h1>
             <p className="mt-8 max-w-2xl text-lg leading-8 text-[var(--text-muted)] sm:text-xl">
-              Interactive, data-rich, built for professionals who don&apos;t have time for
-              legacy GIS tools.
+              Public mining data finally made beautiful, fast and actually usable.
             </p>
             <Button
               asChild
@@ -404,7 +415,15 @@ export default function ProductPage() {
             </ul>
           </div>
 
-          <div className="relative rounded-[2rem] border border-[rgba(184,125,69,0.45)] bg-[rgba(8,6,4,0.62)] p-3 shadow-[0_0_80px_rgba(184,125,69,0.18)] backdrop-blur-2xl">
+          <Link
+            href="/map"
+            className="group relative block cursor-pointer rounded-[2rem] border border-[rgba(184,125,69,0.45)] bg-[rgba(8,6,4,0.62)] p-3 shadow-[0_0_80px_rgba(184,125,69,0.18)] backdrop-blur-2xl transition-all duration-300 ease-out motion-safe:animate-[pulse_6s_ease-in-out_infinite] hover:-translate-y-1 hover:border-[rgba(184,125,69,0.82)] hover:shadow-[0_18px_68px_rgba(184,125,69,0.33),0_0_80px_rgba(184,125,69,0.32)] hover:motion-safe:animate-none"
+            aria-label="Open MinAtlas live map"
+          >
+            <span
+              className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-[rgba(184,125,69,0.08)] transition-opacity duration-300 group-hover:opacity-100"
+              aria-hidden
+            />
             <div className="relative aspect-[16/10] overflow-hidden rounded-[1.45rem] border border-[var(--border)] bg-[radial-gradient(circle_at_35%_30%,rgba(184,125,69,0.22),transparent_32%),linear-gradient(135deg,#151018,#07050a)]">
               <div
                 className="absolute inset-0 opacity-90"
@@ -420,14 +439,11 @@ export default function ProductPage() {
                 aria-label="MinAtlas interactive map preview"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(7,5,10,0.66)_100%)]" />
-              <Link
-                href="/map"
-                className="absolute bottom-4 right-4 rounded-full border border-[rgba(184,125,69,0.46)] bg-[rgba(8,6,4,0.72)] px-4 py-2 text-xs font-medium text-[rgba(255,253,250,0.93)] backdrop-blur-xl transition hover:border-[var(--accent)] hover:text-white"
-              >
+              <span className="absolute bottom-4 right-4 rounded-full border border-[rgba(184,125,69,0.46)] bg-[rgba(8,6,4,0.72)] px-4 py-2 text-xs font-medium text-[rgba(255,253,250,0.93)] backdrop-blur-xl transition-all duration-300 group-hover:border-[var(--accent)] group-hover:text-white group-hover:shadow-[0_0_28px_rgba(184,125,69,0.32)]">
                 Try it live →
-              </Link>
+              </span>
             </div>
-          </div>
+          </Link>
         </Reveal>
 
         <Reveal id="features" className="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:px-12">
@@ -460,9 +476,9 @@ export default function ProductPage() {
                 Generate a site brief in seconds.
               </h2>
               <p className="mt-7 max-w-xl text-base leading-8 text-[var(--text-muted)]">
-                Claude AI synthesises all available data into a clean one-page intelligence
-                brief per mine site, giving you the operator, commodity, tenement and
-                status context without manual research.
+                AI-powered synthesis of all available data into a clean one-page
+                intelligence brief per mine site, giving you the operator, commodity,
+                tenement and status context without manual research.
               </p>
               <div className="mt-8 space-y-4">
                 {reportFeatures.map((feature) => (

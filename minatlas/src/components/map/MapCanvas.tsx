@@ -20,6 +20,7 @@ const EARTH_RADIUS_KM = 6371;
 interface MapTelemetry {
   viewDistanceKm: number;
   bearingDeg: number;
+  zoomLevel: number;
 }
 
 interface MapCanvasProps {
@@ -144,12 +145,14 @@ export default function MapCanvas({
       ),
       // Rounded bearing prevents excessive React updates during drag/rotate.
       bearingDeg: Math.round(((map.getBearing() % 360) + 360) % 360),
+      zoomLevel: Math.round(map.getZoom() * 10) / 10,
     };
     const lastTelemetry = lastTelemetryRef.current;
     if (
       lastTelemetry &&
       lastTelemetry.viewDistanceKm === telemetry.viewDistanceKm &&
-      lastTelemetry.bearingDeg === telemetry.bearingDeg
+      lastTelemetry.bearingDeg === telemetry.bearingDeg &&
+      lastTelemetry.zoomLevel === telemetry.zoomLevel
     ) {
       return;
     }

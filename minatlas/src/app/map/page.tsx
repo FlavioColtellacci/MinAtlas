@@ -33,9 +33,34 @@ interface MapSettingsState {
 interface MapTelemetryState {
   viewDistanceKm: number;
   bearingDeg: number;
+  zoomLevel: number;
 }
 
 const SETTINGS_STORAGE_KEY = "minatlas-map-settings-v1";
+const SITE_SELECTION_TUNING = {
+  zoomBudgets: [
+    { maxZoom: 3.5, budget: 450 },
+    { maxZoom: 5, budget: 900 },
+    { maxZoom: 7, budget: 1600 },
+    { maxZoom: 9, budget: 2600 },
+    { maxZoom: Number.POSITIVE_INFINITY, budget: 4000 },
+  ],
+  quotas: {
+    topScore: 0.55,
+    midScore: 0.25,
+    longTail: 0.2,
+  },
+  pools: {
+    midScore: {
+      startPercentile: 0.25,
+      endPercentile: 0.75,
+    },
+    longTail: {
+      startPercentile: 0.55,
+    },
+  },
+} as const;
+const UNKNOWN_DIVERSITY_GROUP = "__unknown__";
 
 const DEFAULT_SETTINGS: MapSettingsState = {
   basemap: "satellite",
@@ -72,6 +97,131 @@ function normalizeMarkerOpacity(value: number | undefined) {
   return Math.max(0.35, Math.min(1, value as number));
 }
 
+function getZoomSelectionBudget(zoomLevel: number, maxPointsRendered: number) {
+  const zoomBudget = SITE_SELECTION_TUNING.zoomBudgets.find((entry) => zoomLevel <= entry.maxZoom)?.budget ?? maxPointsRendered;
+  return Math.min(maxPointsRendered, zoomBudget);
+}
+
+function stableSiteHash(site: MineSite) {
+  let hash = 2166136261;
+  for (let index = 0; index < site.id.length; index += 1) {
+    hash ^= site.id.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function compareByImportance(a: MineSite, b: MineSite) {
+  return b.importanceScore - a.importanceScore || stableSiteHash(a) - stableSiteHash(b) || a.id.localeCompare(b.id);
+}
+
+function compareByStableRandom(a: MineSite, b: MineSite) {
+  return stableSiteHash(a) - stableSiteHash(b) || compareByImportance(a, b);
+}
+
+function getDiversityCaps(budget: number, zoomLevel: number) {
+  const stateShare = zoomLevel < 4 ? 0.4 : zoomLevel < 6 ? 0.5 : 0.65;
+  const commodityShare = zoomLevel < 4 ? 0.35 : zoomLevel < 6 ? 0.45 : 0.6;
+
+  return {
+    maxPerState: Math.max(12, Math.ceil(budget * stateShare)),
+    maxPerCommodity: Math.max(12, Math.ceil(budget * commodityShare)),
+  };
+}
+
+function getSiteStateKey(site: MineSite) {
+  return site.state ?? UNKNOWN_DIVERSITY_GROUP;
+}
+
+function getSiteCommodityKeys(site: MineSite) {
+  return site.commodity.length > 0 ? site.commodity : [UNKNOWN_DIVERSITY_GROUP];
+}
+
+function matchesSiteSearch(site: MineSite, normalizedQuery: string) {
+  if (normalizedQuery.length === 0) return true;
+
+  return [
+    site.name,
+    site.operator ?? "",
+    site.state ?? "",
+    site.nearest_town ?? "",
+    site.commodity.join(" "),
+    site.status,
+    site.production_type ?? "",
+  ]
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
+function selectMineSitesForMap(sites: MineSite[], maxPointsRendered: number, zoomLevel: number) {
+  const budget = getZoomSelectionBudget(zoomLevel, maxPointsRendered);
+  if (sites.length <= budget) return sites;
+
+  const sortedByImportance = [...sites].sort(compareByImportance);
+  const midPool = sortedByImportance
+    .slice(
+      Math.floor(sortedByImportance.length * SITE_SELECTION_TUNING.pools.midScore.startPercentile),
+      Math.ceil(sortedByImportance.length * SITE_SELECTION_TUNING.pools.midScore.endPercentile),
+    )
+    .sort(compareByImportance);
+  const longTailPool = sortedByImportance
+    .slice(Math.floor(sortedByImportance.length * SITE_SELECTION_TUNING.pools.longTail.startPercentile))
+    .sort(compareByStableRandom);
+  const selectedSites: MineSite[] = [];
+  const selectedSiteIds = new Set<string>();
+  const stateCounts = new Map<string, number>();
+  const commodityCounts = new Map<string, number>();
+  const diversityCaps = getDiversityCaps(budget, zoomLevel);
+  const topScoreTarget = Math.min(budget, Math.round(budget * SITE_SELECTION_TUNING.quotas.topScore));
+  const midScoreTarget = Math.min(budget - topScoreTarget, Math.round(budget * SITE_SELECTION_TUNING.quotas.midScore));
+  const longTailTarget = Math.min(
+    budget - topScoreTarget - midScoreTarget,
+    Math.round(budget * SITE_SELECTION_TUNING.quotas.longTail),
+  );
+
+  const canAddSite = (site: MineSite, enforceDiversity: boolean) => {
+    if (selectedSiteIds.has(site.id)) return false;
+    if (!enforceDiversity) return true;
+
+    const stateKey = getSiteStateKey(site);
+    if ((stateCounts.get(stateKey) ?? 0) >= diversityCaps.maxPerState) return false;
+
+    return getSiteCommodityKeys(site).every(
+      (commodityKey) => (commodityCounts.get(commodityKey) ?? 0) < diversityCaps.maxPerCommodity,
+    );
+  };
+
+  const addSite = (site: MineSite) => {
+    selectedSiteIds.add(site.id);
+    selectedSites.push(site);
+
+    const stateKey = getSiteStateKey(site);
+    stateCounts.set(stateKey, (stateCounts.get(stateKey) ?? 0) + 1);
+    for (const commodityKey of getSiteCommodityKeys(site)) {
+      commodityCounts.set(commodityKey, (commodityCounts.get(commodityKey) ?? 0) + 1);
+    }
+  };
+
+  const addFromPool = (pool: MineSite[], targetSize: number, enforceDiversity: boolean) => {
+    for (const site of pool) {
+      if (selectedSites.length >= targetSize) break;
+      if (!canAddSite(site, enforceDiversity)) continue;
+      addSite(site);
+    }
+  };
+
+  addFromPool(sortedByImportance, topScoreTarget, true);
+  addFromPool(midPool, topScoreTarget + midScoreTarget, true);
+  addFromPool(longTailPool, topScoreTarget + midScoreTarget + longTailTarget, true);
+
+  if (selectedSites.length < budget) {
+    addFromPool([...longTailPool, ...midPool, ...sortedByImportance], budget, false);
+  }
+
+  return selectedSites;
+}
+
 export default function MapPage() {
   const { data: mineSites = [] } = useMineSites();
   const { data: tenements = [] } = useTenements();
@@ -83,6 +233,7 @@ export default function MapPage() {
   const [mapTelemetry, setMapTelemetry] = useState<MapTelemetryState>({
     viewDistanceKm: 0,
     bearingDeg: 0,
+    zoomLevel: 2.9,
   });
   const [selectedCommodities, setSelectedCommodities] = useState<string[]>([]);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -98,9 +249,14 @@ export default function MapPage() {
 
   const mapStyleUrl = MAP_STYLE_BY_BASEMAP[settings.basemap];
   const maxPointsRendered = normalizeMaxPointsRendered(settings.maxPointsRendered);
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const handleTelemetryUpdate = useCallback((next: MapTelemetryState) => {
     setMapTelemetry((previous) =>
-      previous.viewDistanceKm === next.viewDistanceKm && previous.bearingDeg === next.bearingDeg ? previous : next,
+      previous.viewDistanceKm === next.viewDistanceKm &&
+      previous.bearingDeg === next.bearingDeg &&
+      previous.zoomLevel === next.zoomLevel
+        ? previous
+        : next,
     );
   }, []);
 
@@ -127,42 +283,24 @@ export default function MapPage() {
 
   const visibleSites = useMemo(
     () => {
-      const normalizedQuery = searchQuery.trim().toLowerCase();
-
-      return (
-      mineSites
+      const filteredSites = mineSites
         .filter((site) => {
           const commodityMatches =
             selectedCommodities.length === 0 || site.commodity.some((commodity) => selectedCommodities.includes(commodity));
           const stateMatches = selectedStates.length === 0 || (site.state ? selectedStates.includes(site.state) : false);
           const statusMatches = selectedStatuses.length === 0 || selectedStatuses.includes(site.status);
-          const searchMatches =
-            normalizedQuery.length === 0 ||
-            [
-              site.name,
-              site.operator ?? "",
-              site.state ?? "",
-              site.nearest_town ?? "",
-              site.commodity.join(" "),
-              site.status,
-              site.production_type ?? "",
-            ]
-              .join(" ")
-              .toLowerCase()
-              .includes(normalizedQuery);
+          const searchMatches = matchesSiteSearch(site, normalizedSearchQuery);
 
           return commodityMatches && stateMatches && statusMatches && searchMatches;
-        })
-        .slice(0, maxPointsRendered)
-      );
+        });
+
+      return selectMineSitesForMap(filteredSites, maxPointsRendered, mapTelemetry.zoomLevel);
     },
-    [maxPointsRendered, mineSites, searchQuery, selectedCommodities, selectedStates, selectedStatuses],
+    [mapTelemetry.zoomLevel, maxPointsRendered, mineSites, normalizedSearchQuery, selectedCommodities, selectedStates, selectedStatuses],
   );
 
   const visibleTenements = useMemo(
     () => {
-      const normalizedQuery = searchQuery.trim().toLowerCase();
-
       return (
       tenements.filter((tenement) => {
         const commodityMatches =
@@ -170,18 +308,31 @@ export default function MapPage() {
           tenement.commodity.some((commodity) => selectedCommodities.includes(commodity));
         const stateMatches = selectedStates.length === 0 || (tenement.state ? selectedStates.includes(tenement.state) : false);
         const searchMatches =
-          normalizedQuery.length === 0 ||
+          normalizedSearchQuery.length === 0 ||
           [tenement.tenement_id ?? "", tenement.holder ?? "", tenement.state ?? "", tenement.status ?? "", tenement.commodity.join(" ")]
             .join(" ")
             .toLowerCase()
-            .includes(normalizedQuery);
+            .includes(normalizedSearchQuery);
 
         return commodityMatches && stateMatches && searchMatches;
       })
       );
     },
-    [searchQuery, selectedCommodities, selectedStates, tenements],
+    [normalizedSearchQuery, selectedCommodities, selectedStates, tenements],
   );
+
+  const liveSearchResults = useMemo(() => {
+    if (normalizedSearchQuery.length === 0) return [];
+
+    return [...mineSites]
+      .filter((site) => matchesSiteSearch(site, normalizedSearchQuery))
+      .sort((a, b) => {
+        const aStartsWith = a.name.toLowerCase().startsWith(normalizedSearchQuery) ? 1 : 0;
+        const bStartsWith = b.name.toLowerCase().startsWith(normalizedSearchQuery) ? 1 : 0;
+        return bStartsWith - aStartsWith || b.importanceScore - a.importanceScore || a.name.localeCompare(b.name);
+      })
+      .slice(0, 8);
+  }, [mineSites, normalizedSearchQuery]);
 
   const toggleValue = (value: string, current: string[], setValue: (next: string[]) => void) => {
     setValue(current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
@@ -240,8 +391,58 @@ export default function MapPage() {
         onTelemetryUpdate={handleTelemetryUpdate}
       />
 
-      <div className="absolute left-[18px] right-[18px] top-[18px] z-20 flex items-center justify-between gap-3">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+      <div className="absolute left-[18px] right-[18px] top-[18px] z-20 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="relative w-[560px] max-w-[calc(100vw-420px)]">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} />
+            {normalizedSearchQuery.length > 0 ? (
+              <div className="premium-scrollbar glass absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-80 overflow-y-auto rounded-2xl p-2">
+                {liveSearchResults.length > 0 ? (
+                  liveSearchResults.map((site) => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => {
+                        setLayersEnabled(true);
+                        setSelectedSite(site);
+                        setSearchQuery(site.name);
+                      }}
+                      className={[
+                        "w-full rounded-xl px-3 py-2 text-left transition-all duration-150 ease-out",
+                        selectedSite?.id === site.id
+                          ? "bg-[color:var(--accent-subtle)] text-[color:var(--text-primary)]"
+                          : "text-[color:var(--text-secondary)] hover:bg-[color:var(--accent-subtle)] hover:text-[color:var(--text-primary)]",
+                      ].join(" ")}
+                    >
+                      <p className="truncate text-sm">{site.name}</p>
+                      <p className="truncate text-xs text-[color:var(--text-tertiary)]">
+                        {[site.operator, site.state, site.nearest_town].filter(Boolean).join(" • ") || site.status}
+                      </p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-3 py-2 text-sm text-[color:var(--text-tertiary)]">No matching sites found.</p>
+                )}
+              </div>
+            ) : null}
+          </div>
+          <FilterBar
+            commodities={commodities}
+            states={states}
+            statuses={statuses}
+            selectedCommodities={selectedCommodities}
+            selectedStates={selectedStates}
+            selectedStatuses={selectedStatuses}
+            onToggleCommodity={(commodity) => toggleValue(commodity, selectedCommodities, setSelectedCommodities)}
+            onToggleState={(state) => toggleValue(state, selectedStates, setSelectedStates)}
+            onToggleStatus={(status) => toggleValue(status, selectedStatuses, setSelectedStatuses)}
+            onClearFilters={() => {
+              setSelectedCommodities([]);
+              setSelectedStates([]);
+              setSelectedStatuses([]);
+            }}
+          />
+        </div>
         <MapControls
           layersActive={layersEnabled}
           settingsActive={settingsOpen}
@@ -482,25 +683,6 @@ export default function MapPage() {
           Reset all settings
         </button>
         <p className="text-xs text-[color:var(--text-tertiary)]">Settings are saved automatically on this device.</p>
-      </div>
-
-      <div className="absolute left-[18px] top-[76px] z-20">
-        <FilterBar
-          commodities={commodities}
-          states={states}
-          statuses={statuses}
-          selectedCommodities={selectedCommodities}
-          selectedStates={selectedStates}
-          selectedStatuses={selectedStatuses}
-          onToggleCommodity={(commodity) => toggleValue(commodity, selectedCommodities, setSelectedCommodities)}
-          onToggleState={(state) => toggleValue(state, selectedStates, setSelectedStates)}
-          onToggleStatus={(status) => toggleValue(status, selectedStatuses, setSelectedStatuses)}
-          onClearFilters={() => {
-            setSelectedCommodities([]);
-            setSelectedStates([]);
-            setSelectedStatuses([]);
-          }}
-        />
       </div>
 
       <div className="absolute bottom-10 right-[18px] z-20 flex flex-col items-end gap-2">

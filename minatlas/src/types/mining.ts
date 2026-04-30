@@ -7,6 +7,7 @@ export interface MineSite {
   status: "operating" | "care_maintenance" | "exploration" | "development" | "closed";
   production_type: "open_cut" | "underground" | "both" | null;
   annual_production_oz: number | null;
+  importanceScore: number;
   roster: string | null;
   nearest_town: string | null;
   distance_to_perth_km: number | null;

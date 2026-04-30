@@ -115,3 +115,28 @@
   border: 0.5px solid var(--border);
   box-shadow: var(--shadow-card);
 }
+
+/* Subtle, blended scrollbar for frosted panels. */
+.premium-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(26, 24, 20, 0.18) transparent;
+}
+
+.premium-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.premium-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  background-color: rgba(26, 24, 20, 0.18);
+}
+
+.premium-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(26, 24, 20, 0.28);
+}

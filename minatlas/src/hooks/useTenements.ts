@@ -1,10 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { Tenement, TenementRow } from "@/types/mining";
 
 async function fetchTenements(): Promise<Tenement[]> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.from("tenements_public").select("*").limit(500);
 
   if (error) {

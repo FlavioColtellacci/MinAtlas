@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import type { MineSite, MineSiteRow } from "@/types/mining";
 
 const MINE_SITE_PAGE_SIZE = 1000;
@@ -86,6 +86,7 @@ function getImportanceScore(site: MineSiteRow, commodity: string[]) {
 }
 
 async function fetchMineSites(): Promise<MineSite[]> {
+  const supabase = getSupabaseClient();
   const pages = await Promise.all(
     Array.from({ length: MINE_SITE_PAGE_COUNT }, (_, pageIndex) => {
       const from = pageIndex * MINE_SITE_PAGE_SIZE;

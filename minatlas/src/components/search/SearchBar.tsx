@@ -6,9 +6,16 @@ import { Search, X } from "lucide-react";
 interface SearchBarProps {
   value?: string;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
-export default function SearchBar({ value = "", onChange = () => undefined }: SearchBarProps) {
+export default function SearchBar({
+  value = "",
+  onChange = () => undefined,
+  onFocus = () => undefined,
+  onBlur = () => undefined,
+}: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -23,6 +30,15 @@ export default function SearchBar({ value = "", onChange = () => undefined }: Se
     return () => window.removeEventListener("keydown", handleKeydown);
   }, []);
 
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    };
+    window.addEventListener("minatlas:focus-search", handleFocusSearch);
+    return () => window.removeEventListener("minatlas:focus-search", handleFocusSearch);
+  }, []);
+
   return (
     <div className="glass flex h-12 w-full max-w-xl items-center gap-3 rounded-2xl px-4 transition-all duration-200 ease-out hover:border-[color:var(--accent)]">
       <span className="flex items-center gap-3 text-sm text-[color:var(--text-secondary)]">
@@ -33,6 +49,8 @@ export default function SearchBar({ value = "", onChange = () => undefined }: Se
         ref={inputRef}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
         placeholder="Search sites, operators, regions"
         className="flex-1 bg-transparent text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-secondary)] focus:outline-none"
       />

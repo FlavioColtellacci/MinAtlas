@@ -46,6 +46,7 @@ interface MapCanvasProps {
     resetBearing: () => void;
     fitToVisibleSites: () => void;
     setBearing: (bearing: number) => void;
+    zoomToSiteWithFocus: (site: MineSite) => void;
   }) => void;
   onTelemetryUpdate?: (telemetry: MapTelemetry) => void;
 }
@@ -84,6 +85,8 @@ export default function MapCanvas({
   const hasAttachedMapHandlers = useRef(false);
   const telemetryFrameRef = useRef<number | null>(null);
   const lastTelemetryRef = useRef<MapTelemetry | null>(null);
+  const temporaryAutoRotateRef = useRef(false);
+  const userInteractionCleanupRef = useRef<(() => void) | null>(null);
   const [hoveredSite, setHoveredSite] = useState<MineSite | null>(null);
   const INITIAL_AUSTRALIA_VIEW = useMemo(
     () => ({
@@ -166,6 +169,59 @@ export default function MapCanvas({
       telemetryFrameRef.current = null;
       emitTelemetry(map);
     });
+  };
+
+  const getZoomForHorizontalDistanceKm = (targetDistanceKm: number, latitudeDeg: number, viewportWidthPx: number) => {
+    const safeWidth = Math.max(320, viewportWidthPx);
+    const latRadians = (latitudeDeg * Math.PI) / 180;
+    const metersPerPixelAtZoom0 = 156543.03392 * Math.cos(latRadians);
+    const targetMetersPerPixel = (targetDistanceKm * 1000) / safeWidth;
+    if (!Number.isFinite(targetMetersPerPixel) || targetMetersPerPixel <= 0) return 10.5;
+    const zoom = Math.log2(metersPerPixelAtZoom0 / targetMetersPerPixel);
+    return Math.max(2, Math.min(16, zoom));
+  };
+
+  const stopTemporaryAutoRotate = () => {
+    temporaryAutoRotateRef.current = false;
+    if (userInteractionCleanupRef.current) {
+      userInteractionCleanupRef.current();
+      userInteractionCleanupRef.current = null;
+    }
+  };
+
+  const armTemporaryAutoRotateCancellation = () => {
+    const stopOnInteraction = () => stopTemporaryAutoRotate();
+
+    const registerListeners = () => {
+      window.addEventListener("pointerdown", stopOnInteraction, { passive: true });
+      window.addEventListener("wheel", stopOnInteraction, { passive: true });
+      window.addEventListener("keydown", stopOnInteraction);
+      userInteractionCleanupRef.current = () => {
+        window.removeEventListener("pointerdown", stopOnInteraction);
+        window.removeEventListener("wheel", stopOnInteraction);
+        window.removeEventListener("keydown", stopOnInteraction);
+      };
+    };
+
+    window.setTimeout(registerListeners, 0);
+  };
+
+  const startTemporaryAutoRotate = (map: mapboxgl.Map) => {
+    if (autoRotateFrameRef.current) {
+      window.cancelAnimationFrame(autoRotateFrameRef.current);
+      autoRotateFrameRef.current = null;
+    }
+
+    const speed = smoothness === "cinematic" ? 0.02 : 0.03;
+    const spin = () => {
+      if (!temporaryAutoRotateRef.current) return;
+      if (!map.isMoving() || map.isRotating()) {
+        map.setBearing(map.getBearing() + speed);
+      }
+      autoRotateFrameRef.current = window.requestAnimationFrame(spin);
+    };
+
+    autoRotateFrameRef.current = window.requestAnimationFrame(spin);
   };
 
   const ensureHillshadeLayer = (map: mapboxgl.Map) => {
@@ -427,6 +483,21 @@ export default function MapCanvas({
       resetBearing: () => map.easeTo({ bearing: 0, duration: 700 * smoothnessMultiplier, essential: true }),
       fitToVisibleSites,
       setBearing: (bearing: number) => map.setBearing(((bearing % 360) + 360) % 360),
+      zoomToSiteWithFocus: (site: MineSite) => {
+        const targetZoom = getZoomForHorizontalDistanceKm(13, site.location.coordinates[1], map.getCanvas().clientWidth);
+        stopTemporaryAutoRotate();
+        temporaryAutoRotateRef.current = true;
+        armTemporaryAutoRotateCancellation();
+        startTemporaryAutoRotate(map);
+        map.flyTo({
+          center: site.location.coordinates,
+          zoom: targetZoom,
+          pitch: Math.min(50, pitchLimit),
+          duration: 1400 * smoothnessMultiplier,
+          essential: true,
+          curve: 1.2,
+        });
+      },
     };
   };
 
@@ -716,8 +787,7 @@ export default function MapCanvas({
   useEffect(() => {
     if (!selectedSite) return;
     const map = mapRef.current?.getMap();
-    if (!map) return;
-    if (!hasPlayedIntro.current) return;
+    if (!map || !hasLoadedMap.current) return;
 
     map.flyTo({
       center: selectedSite.location.coordinates,

@@ -238,6 +238,8 @@ export default function MapPage() {
   const [selectedCommodities, setSelectedCommodities] = useState<string[]>([]);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [openFiltersRequestToken, setOpenFiltersRequestToken] = useState(0);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [mapControls, setMapControls] = useState<{
     zoomIn: () => void;
     zoomOut: () => void;
@@ -245,6 +247,7 @@ export default function MapPage() {
     resetBearing: () => void;
     fitToVisibleSites: () => void;
     setBearing: (bearing: number) => void;
+    zoomToSiteWithFocus: (site: MineSite) => void;
   } | null>(null);
 
   const mapStyleUrl = MAP_STYLE_BY_BASEMAP[settings.basemap];
@@ -334,6 +337,14 @@ export default function MapPage() {
       .slice(0, 8);
   }, [mineSites, normalizedSearchQuery]);
 
+  const featuredSites = useMemo(
+    () =>
+      [...mineSites]
+        .sort((a, b) => b.importanceScore - a.importanceScore || a.name.localeCompare(b.name))
+        .slice(0, 8),
+    [mineSites],
+  );
+
   const toggleValue = (value: string, current: string[], setValue: (next: string[]) => void) => {
     setValue(current.includes(value) ? current.filter((item) => item !== value) : [...current, value]);
   };
@@ -394,11 +405,21 @@ export default function MapPage() {
       <div className="absolute left-[18px] right-[18px] top-[18px] z-20 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="relative w-[560px] max-w-[calc(100vw-420px)]">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-            {normalizedSearchQuery.length > 0 ? (
+            <SearchBar
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => {
+                window.setTimeout(() => setIsSearchFocused(false), 120);
+              }}
+            />
+            {normalizedSearchQuery.length > 0 || isSearchFocused ? (
               <div className="premium-scrollbar glass absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-80 overflow-y-auto rounded-2xl p-2">
-                {liveSearchResults.length > 0 ? (
-                  liveSearchResults.map((site) => (
+                {normalizedSearchQuery.length === 0 ? (
+                  <p className="px-3 py-2 text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">Main sites</p>
+                ) : null}
+                {(normalizedSearchQuery.length > 0 ? liveSearchResults : featuredSites).length > 0 ? (
+                  (normalizedSearchQuery.length > 0 ? liveSearchResults : featuredSites).map((site) => (
                     <button
                       key={site.id}
                       type="button"
@@ -406,6 +427,8 @@ export default function MapPage() {
                         setLayersEnabled(true);
                         setSelectedSite(site);
                         setSearchQuery(site.name);
+                        setIsSearchFocused(false);
+                        mapControls?.zoomToSiteWithFocus(site);
                       }}
                       className={[
                         "w-full rounded-xl px-3 py-2 text-left transition-all duration-150 ease-out",
@@ -421,7 +444,9 @@ export default function MapPage() {
                     </button>
                   ))
                 ) : (
-                  <p className="px-3 py-2 text-sm text-[color:var(--text-tertiary)]">No matching sites found.</p>
+                  <p className="px-3 py-2 text-sm text-[color:var(--text-tertiary)]">
+                    {normalizedSearchQuery.length > 0 ? "No matching sites found." : "No sites available."}
+                  </p>
                 )}
               </div>
             ) : null}
@@ -441,6 +466,7 @@ export default function MapPage() {
               setSelectedStates([]);
               setSelectedStatuses([]);
             }}
+            openPanelRequestToken={openFiltersRequestToken}
           />
         </div>
         <MapControls
@@ -722,7 +748,22 @@ export default function MapPage() {
       </div>
 
       <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2">
-        <DetailCard site={selectedSite} />
+        <DetailCard
+          site={selectedSite}
+          onZoomToSite={() => {
+            if (!selectedSite) return;
+            mapControls?.zoomToSiteWithFocus(selectedSite);
+          }}
+          onGuideClickMarker={() => {
+            mapControls?.fitToVisibleSites();
+          }}
+          onGuideSearch={() => {
+            window.dispatchEvent(new Event("minatlas:focus-search"));
+          }}
+          onGuideFilters={() => {
+            setOpenFiltersRequestToken((current) => current + 1);
+          }}
+        />
       </div>
 
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ interface FilterBarProps {
   onToggleState: (state: string) => void;
   onToggleStatus: (status: string) => void;
   onClearFilters: () => void;
+  openPanelRequestToken?: number;
 }
 
 const COMMODITY_LABELS: Record<string, string> = {
@@ -67,6 +68,7 @@ export default function FilterBar({
   onToggleState,
   onToggleStatus,
   onClearFilters,
+  openPanelRequestToken = 0,
 }: FilterBarProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -89,6 +91,11 @@ export default function FilterBar({
   ];
 
   const hasActiveFilters = activeChips.length > 0;
+
+  useEffect(() => {
+    if (openPanelRequestToken === 0) return;
+    setIsPanelOpen(true);
+  }, [openPanelRequestToken]);
 
   return (
     <div className="relative flex flex-col gap-2">

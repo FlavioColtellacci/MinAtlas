@@ -1,30 +1,29 @@
 # MinAtlas
 
-MinAtlas is a premium, map-first mining intelligence web application focused on the Australian mining sector.
+MinAtlas is a premium map-first intelligence platform for the Australian mining sector.
 
-It transforms public mining datasets into a fast, modern, visually refined product experience designed for:
+Built for professionals who need fast, clear, and confident decisions:
 
 - mining professionals
-- FIFO workers researching mine sites
-- exploration and geology users
+- FIFO teams researching mine sites
+- exploration and geology specialists
 - mining-focused investors
 
-## Website Overview
+## What MinAtlas Delivers
 
-MinAtlas is built to make discovery, filtering, and contextual mine-site research dramatically easier than legacy GIS interfaces.
+MinAtlas turns complex public data into a clean experience focused on discovery and context.
 
-The current product direction emphasizes:
+The product experience is designed around:
 
-- full-screen, map-dominant UI
-- lightweight frosted-glass interface elements
-- restrained visual language and typography-led hierarchy
-- performance-first interaction patterns
+- a full-screen map-first interface
+- modern visual clarity
+- fast interaction and filtering
+- high signal, low noise workflows
 
-## Data, Privacy, and Security
+## Trust
 
-- Data comes from publicly available government sources and is normalized for application use.
-- No credentials, tokens, or private keys are documented in this README.
-- Runtime secrets are managed only through local environment files and deployment environment variables.
+- Data is sourced from public government datasets and normalized for application use.
+- No credentials, tokens, or private keys are documented in this repository.
 
 ## Tech Stack
 
@@ -35,12 +34,6 @@ The current product direction emphasizes:
 - Supabase (Postgres + PostGIS)
 - TanStack Query
 - shadcn/ui + Radix UI
-
-## Repository Structure
-
-This repository currently contains the app in:
-
-- `minatlas/` — web application source code
 
 ## Ownership and License
 

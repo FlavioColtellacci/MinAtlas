@@ -541,7 +541,7 @@
   padding: 0.92rem 2.1rem;
   min-width: 180px;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--landing-accent);
   color: #ffffff;
   font-family: var(--landing-ui);
@@ -596,7 +596,7 @@
   padding: 0.92rem 1.85rem;
   min-width: 160px;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 999px;
   border: 1px solid var(--landing-glass-b);
   background: var(--landing-glass);
   backdrop-filter: blur(14px);

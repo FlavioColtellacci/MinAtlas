@@ -130,7 +130,7 @@ export default function Home() {
           </div>
 
           <div className={styles.cta}>
-            <Link href="/map" className={styles.btnPrimary}>
+            <Link href="/map?intro=landing" className={styles.btnPrimary}>
               Explore the Atlas
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
                 <path

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { SITE_NAME, absoluteUrl } from "@/lib/site";
+import { SITE_NAME } from "@/lib/site";
 
 const description =
   "Open the MinAtlas mining map to explore Australian mine sites, tenements, operators and commodities from a map-first view.";
@@ -15,23 +15,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_AU",
     siteName: SITE_NAME,
-    title: "Mining Map | MinAtlas",
+    title: "Interactive Australian mining map — sites & tenements | MinAtlas",
     description,
     url: "/map",
-    images: [
-      {
-        url: absoluteUrl("/globe-australia.jpg"),
-        width: 1200,
-        height: 630,
-        alt: "MinAtlas mining map for Australia",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mining Map | MinAtlas",
+    title: "Interactive Australian mining map — sites & tenements | MinAtlas",
     description,
-    images: [absoluteUrl("/globe-australia.jpg")],
   },
 };
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import QueryProvider from "@/components/providers/QueryProvider";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const siteJsonLd = {
@@ -29,7 +29,7 @@ const siteJsonLd = {
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "MinAtlas | Australian Mining Map",
+    default: "MinAtlas | Map-first mining intelligence across Australia",
     template: "%s | MinAtlas",
   },
   description: SITE_DESCRIPTION,
@@ -42,22 +42,13 @@ export const metadata: Metadata = {
     locale: "en_AU",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "MinAtlas | Australian Mining Map",
+    title: "MinAtlas | Map-first mining intelligence across Australia",
     description: SITE_DESCRIPTION,
-    images: [
-      {
-        url: absoluteUrl("/globe-australia.jpg"),
-        width: 1200,
-        height: 630,
-        alt: "MinAtlas map-first mining intelligence for Australia",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MinAtlas | Australian Mining Map",
+    title: "MinAtlas | Map-first mining intelligence across Australia",
     description: SITE_DESCRIPTION,
-    images: [absoluteUrl("/globe-australia.jpg")],
   },
   other: {
     "google-adsense-account": "ca-pub-6113308150656934",

@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_AU",
     siteName: SITE_NAME,
-    title: "Interactive Australian mining map — sites & tenements | MinAtlas",
+    title: "Interactive Australian mining map: sites & tenements | MinAtlas",
     description,
     url: "/map",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Interactive Australian mining map — sites & tenements | MinAtlas",
+    title: "Interactive Australian mining map: sites & tenements | MinAtlas",
     description,
   },
 };

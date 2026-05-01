@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_AU",
     siteName: SITE_NAME,
-    title: "Product tour — map-first Australian mining intelligence | MinAtlas",
+    title: "Product tour: map-first Australian mining intelligence | MinAtlas",
     description,
     url: "/product",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Product tour — map-first Australian mining intelligence | MinAtlas",
+    title: "Product tour: map-first Australian mining intelligence | MinAtlas",
     description,
   },
 };

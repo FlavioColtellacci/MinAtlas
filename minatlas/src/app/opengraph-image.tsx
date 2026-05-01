@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
 
-export const alt = "MinAtlas — map-first Australian mining intelligence";
+export const alt = "MinAtlas: map-first Australian mining intelligence";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -92,7 +92,7 @@ export default async function Image() {
                 fontWeight: 400,
               }}
             >
-              {`Map-first intelligence for Australia\u2019s mining sector — mine sites, tenements, operators and commodities.`}
+              {`Map-first intelligence for Australia\u2019s mining sector: mine sites, tenements, operators and commodities.`}
             </div>
           </div>
 

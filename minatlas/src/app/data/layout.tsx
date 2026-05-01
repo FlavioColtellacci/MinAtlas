@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_AU",
     siteName: SITE_NAME,
-    title: "Mining datasets — WA mines, tenements & public layers | MinAtlas",
+    title: "Mining datasets: WA mines, tenements & public layers | MinAtlas",
     description,
     url: "/data",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mining datasets — WA mines, tenements & public layers | MinAtlas",
+    title: "Mining datasets: WA mines, tenements & public layers | MinAtlas",
     description,
   },
 };

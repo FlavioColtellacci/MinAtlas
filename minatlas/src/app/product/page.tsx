@@ -249,36 +249,32 @@ export default function ProductPage() {
     if (!root) return;
 
     const revealNodes = Array.from(root.querySelectorAll("[data-reveal-id]"));
-    const revealed = new Set<string>();
     let raf = 0;
 
-    const update = () => {
-      const viewportHeight = window.innerHeight;
-      revealNodes.forEach((node) => {
-        const revealId = node.getAttribute("data-reveal-id");
-        if (!revealId || revealed.has(revealId)) return;
-        const rect = node.getBoundingClientRect();
-        if (rect.top <= viewportHeight * 0.88) {
-          revealed.add(revealId);
-        }
-      });
-      setVisibleSections((prev) => {
-        if (prev.size === revealed.size) {
-          let unchanged = true;
-          prev.forEach((id) => {
-            if (!revealed.has(id)) unchanged = false;
-          });
-          if (unchanged) return prev;
-        }
-        return new Set(revealed);
-      });
+    const updateActiveSection = () => {
+      const rootRect = root.getBoundingClientRect();
+      const fallbackVisible = revealNodes
+        .filter((node) => node.getBoundingClientRect().top - rootRect.top <= rootRect.height * 0.88)
+        .map((node) => node.getAttribute("data-reveal-id"))
+        .filter((id): id is string => Boolean(id));
+
+      if (fallbackVisible.length) {
+        setVisibleSections((prev) => {
+          const next = new Set(prev);
+          fallbackVisible.forEach((id) => next.add(id));
+          return next;
+        });
+      }
 
       const activeNodes = navItems
         .map(({ id }) => root.querySelector<HTMLElement>(`#${id}`))
         .filter((node): node is HTMLElement => Boolean(node));
 
       const sectionTops = activeNodes
-        .map((node) => ({ id: node.id, top: node.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop }))
+        .map((node) => ({
+          id: node.id,
+          top: node.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop,
+        }))
         .sort((a, b) => a.top - b.top);
       const marker = root.scrollTop + 140;
       let currentActive = sectionTops[0]?.id ?? navItems[0]?.id ?? "overview";
@@ -290,16 +286,45 @@ export default function ProductPage() {
       raf = 0;
     };
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const newlyVisible = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => entry.target.getAttribute("data-reveal-id"))
+          .filter((id): id is string => Boolean(id));
+
+        if (!newlyVisible.length) return;
+
+        setVisibleSections((prev) => {
+          const next = new Set(prev);
+          newlyVisible.forEach((id) => next.add(id));
+          return next;
+        });
+
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) observer.unobserve(entry.target);
+        });
+      },
+      {
+        root,
+        rootMargin: "0px 0px -12% 0px",
+        threshold: 0,
+      },
+    );
+
+    revealNodes.forEach((node) => observer.observe(node));
+
     const onScrollOrResize = () => {
       if (raf) return;
-      raf = window.requestAnimationFrame(update);
+      raf = window.requestAnimationFrame(updateActiveSection);
     };
 
-    update();
+    updateActiveSection();
     root.addEventListener("scroll", onScrollOrResize, { passive: true });
     window.addEventListener("resize", onScrollOrResize);
 
     return () => {
+      observer.disconnect();
       if (scrollAnimRef.current) {
         window.cancelAnimationFrame(scrollAnimRef.current);
       }
@@ -386,7 +411,7 @@ export default function ProductPage() {
             style={
               {
                 backgroundImage:
-                  "url('/images/pilbara-hero.jpg'), radial-gradient(circle at 58% 36%, rgba(184,125,69,0.28), transparent 34%), linear-gradient(135deg, #171016, #07050a)",
+                  "url('/images/map-preview.jpg'), radial-gradient(circle at 58% 36%, rgba(184,125,69,0.28), transparent 34%), linear-gradient(135deg, #171016, #07050a)",
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               } as CSSProperties

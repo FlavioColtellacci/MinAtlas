@@ -63,7 +63,9 @@ export default function DetailCard({
   const commodityLabel = commodityCodes ? (
     <span className="inline-flex flex-wrap items-baseline gap-1">
       <span>{commodityCodes}</span>
-      {commodityNames ? <span className="text-sm text-[color:var(--text-secondary)]">({commodityNames})</span> : null}
+      {commodityNames ? (
+        <span className="text-xs text-[color:var(--text-secondary)] md:text-sm">({commodityNames})</span>
+      ) : null}
     </span>
   ) : null;
   const rosterLabel = site?.roster ?? null;
@@ -78,28 +80,42 @@ export default function DetailCard({
   const summaryText = summaryParts.length > 0 ? summaryParts.join(" · ") : "Limited public metadata for this site";
 
   const statItems = [
-    annualProduction ? { id: "production", label: "Production", value: annualProduction, fontClass: "font-display text-2xl" } : null,
-    productionType ? { id: "type", label: "Type", value: productionType, fontClass: "font-ui text-xl" } : null,
-    commodityLabel ? { id: "commodity", label: "Commodity", value: commodityLabel, fontClass: "font-ui text-xl" } : null,
-    rosterLabel ? { id: "roster", label: "Roster", value: rosterLabel, fontClass: "font-display text-2xl" } : null,
+    annualProduction
+      ? { id: "production", label: "Production", value: annualProduction, fontClass: "font-display text-xl md:text-2xl" }
+      : null,
+    productionType ? { id: "type", label: "Type", value: productionType, fontClass: "font-ui text-lg md:text-xl" } : null,
+    commodityLabel ? { id: "commodity", label: "Commodity", value: commodityLabel, fontClass: "font-ui text-lg md:text-xl" } : null,
+    rosterLabel ? { id: "roster", label: "Roster", value: rosterLabel, fontClass: "font-display text-xl md:text-2xl" } : null,
   ].filter(Boolean) as Array<{ id: string; label: string; value: ReactNode; fontClass: string }>;
 
   const statGridColsClass =
-    statItems.length >= 4 ? "grid-cols-4" : statItems.length === 3 ? "grid-cols-3" : statItems.length === 2 ? "grid-cols-2" : "grid-cols-1";
+    statItems.length >= 4
+      ? "grid-cols-2 sm:grid-cols-4"
+      : statItems.length === 3
+        ? "grid-cols-1 sm:grid-cols-3"
+        : statItems.length === 2
+          ? "grid-cols-2"
+          : "grid-cols-1";
 
   return (
     <article
       className={[
         "glass-card max-w-[calc(100vw-2rem)] rounded-2xl transition-all duration-300 ease-out",
-        isMinimized ? "w-[340px] p-3" : hasSelection ? "w-[440px] p-4" : "w-[460px] p-3.5",
+        "max-md:flex max-md:min-h-0 max-md:w-full max-md:max-w-none max-md:flex-col max-md:overflow-hidden max-md:rounded-2xl",
+        "max-md:max-h-[min(58dvh,calc(100svh-11.5rem-env(safe-area-inset-bottom,0px)))]",
+        isMinimized
+          ? "w-[340px] p-3 max-md:p-2.5"
+          : hasSelection
+            ? "w-[440px] p-4 max-md:rounded-xl max-md:p-3"
+            : "w-[460px] p-3.5 max-md:rounded-xl max-md:p-2.5",
       ].join(" ")}
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex shrink-0 items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-secondary)]">
             {hasSelection ? `${siteStatusLabel} · ${site?.state ?? "Australia"}` : "No site selected"}
           </p>
-          <h2 className="mt-1 font-display text-4xl leading-[1.12] text-[color:var(--text-primary)] break-words">
+          <h2 className="mt-0.5 break-words font-display text-2xl leading-tight text-[color:var(--text-primary)] md:mt-1 md:text-4xl md:leading-[1.12]">
             {hasSelection ? site?.name : "Select a mining site"}
           </h2>
         </div>
@@ -133,7 +149,11 @@ export default function DetailCard({
       <div
         className={[
           "overflow-hidden transition-all duration-300 ease-out",
-          isMinimized ? "max-h-0 opacity-0" : hasSelection ? "mt-2 max-h-72 opacity-100" : "mt-1.5 max-h-72 opacity-100",
+          isMinimized
+            ? "max-h-0 opacity-0"
+            : hasSelection
+              ? "mt-2 max-h-72 opacity-100 max-md:mt-2 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overflow-y-auto max-md:overscroll-y-contain max-md:pb-1 max-md:touch-pan-y"
+              : "mt-1.5 max-h-72 opacity-100 max-md:mt-1 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overflow-y-auto max-md:overscroll-y-contain max-md:pb-1 max-md:touch-pan-y",
         ].join(" ")}
       >
         {hasSelection ? (
@@ -158,15 +178,15 @@ export default function DetailCard({
             ) : null}
           </>
         ) : (
-          <div className="space-y-2.5">
-            <p className="text-sm text-[color:var(--text-secondary)]">
+          <div className="space-y-2 max-md:space-y-1.5">
+            <p className="text-xs text-[color:var(--text-secondary)] max-md:leading-snug md:text-sm">
               Pick a mine to see operator, commodity mix, production profile and quick actions.
             </p>
-            <div className="grid gap-1.5 border-t border-[color:var(--border)] pt-2.5">
+            <div className="grid gap-1 border-t border-[color:var(--border)] pt-2 max-md:gap-1 max-md:pt-1.5 md:gap-1.5 md:pt-2.5">
               <button
                 type="button"
                 onClick={onGuideClickMarker}
-                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2.5 py-1.5 text-left text-xs text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]"
+                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2 py-1.5 text-left text-[11px] text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)] md:px-2.5 md:text-xs"
               >
                 <Target className="h-3.5 w-3.5 text-[color:var(--accent)]" />
                 Click any marker directly on the map
@@ -174,7 +194,7 @@ export default function DetailCard({
               <button
                 type="button"
                 onClick={onGuideSearch}
-                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2.5 py-1.5 text-left text-xs text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]"
+                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2 py-1.5 text-left text-[11px] text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)] md:px-2.5 md:text-xs"
               >
                 <Search className="h-3.5 w-3.5 text-[color:var(--accent)]" />
                 Search by site name, operator, town or state
@@ -182,7 +202,7 @@ export default function DetailCard({
               <button
                 type="button"
                 onClick={onGuideFilters}
-                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2.5 py-1.5 text-left text-xs text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]"
+                className="flex w-full items-center gap-2 rounded-lg border border-transparent bg-[color:var(--accent-subtle)] px-2 py-1.5 text-left text-[11px] text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)] md:px-2.5 md:text-xs"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5 text-[color:var(--accent)]" />
                 Refine results with Status, State and Commodity filters

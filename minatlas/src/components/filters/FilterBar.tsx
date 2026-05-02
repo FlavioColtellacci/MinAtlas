@@ -105,7 +105,7 @@ export default function FilterBar({
           onClick={() => setIsPanelOpen((current) => !current)}
           aria-expanded={isPanelOpen}
           className={cn(
-            "glass inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition-all duration-200 ease-out",
+            "glass inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs transition-all duration-200 ease-out md:gap-2 md:px-3 md:py-1.5 md:text-sm",
             "hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]",
             isPanelOpen
               ? "border-[color:var(--accent)] text-[color:var(--text-primary)]"

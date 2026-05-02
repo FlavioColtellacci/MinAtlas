@@ -10,6 +10,7 @@ import MapControls from "@/components/map/MapControls";
 import SearchBar from "@/components/search/SearchBar";
 import { useMineSites } from "@/hooks/useMineSites";
 import { useTenements } from "@/hooks/useTenements";
+import { haversineKm, pointInMultiPolygon } from "@/lib/geo";
 import type { MineSite } from "@/types/mining";
 
 type BasemapMode = "light" | "dark" | "satellite";
@@ -324,6 +325,27 @@ export default function MapPage() {
     },
     [normalizedSearchQuery, selectedCommodities, selectedStates, tenements],
   );
+
+  const nearbySites = useMemo(() => {
+    if (!selectedSite) return [];
+
+    return mineSites
+      .filter((site) => site.id !== selectedSite.id)
+      .map((site) => ({
+        ...site,
+        distanceKm: haversineKm(selectedSite.location.coordinates, site.location.coordinates),
+      }))
+      .sort((a, b) => a.distanceKm - b.distanceKm || a.name.localeCompare(b.name))
+      .slice(0, 5);
+  }, [mineSites, selectedSite]);
+
+  const tenementsAtSite = useMemo(() => {
+    if (!selectedSite) return [];
+
+    return tenements
+      .filter((tenement) => tenement.boundary && pointInMultiPolygon(selectedSite.location.coordinates, tenement.boundary))
+      .slice(0, 3);
+  }, [selectedSite, tenements]);
 
   const liveSearchResults = useMemo(() => {
     if (normalizedSearchQuery.length === 0) return [];
@@ -778,9 +800,12 @@ export default function MapPage() {
         </div>
       </div>
 
-      <div className="fixed z-30 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0.75rem))] max-md:left-1/2 max-md:w-[min(26rem,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:-translate-x-1/2 md:absolute md:bottom-4 md:left-1/2 md:w-max md:max-w-none md:-translate-x-1/2">
+      <div className="fixed z-30 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0.75rem))] max-md:left-1/2 max-md:w-[min(26rem,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:-translate-x-1/2 md:absolute md:bottom-4 md:left-4 md:w-max md:max-w-none">
         <DetailCard
           site={selectedSite}
+          nearbySites={nearbySites}
+          tenementsAtSite={tenementsAtSite}
+          onSelectNearby={setSelectedSite}
           onZoomToSite={() => {
             if (!selectedSite) return;
             mapControls?.zoomToSiteWithFocus(selectedSite);

@@ -40,7 +40,7 @@ export default function SearchBar({
   }, []);
 
   return (
-    <div className="glass flex h-12 w-full max-w-xl items-center gap-3 rounded-2xl px-4 transition-all duration-200 ease-out hover:border-[color:var(--accent)]">
+    <div className="glass flex h-11 w-full max-w-xl items-center gap-2 rounded-2xl px-3 transition-all duration-200 ease-out hover:border-[color:var(--accent)] md:h-12 md:gap-3 md:px-4">
       <span className="flex items-center gap-3 text-sm text-[color:var(--text-secondary)]">
         <Search className="h-4 w-4" />
       </span>
@@ -65,7 +65,7 @@ export default function SearchBar({
           <X className="h-3.5 w-3.5" />
         </button>
       ) : (
-        <kbd className="rounded-md border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-xs text-[color:var(--text-tertiary)]">
+        <kbd className="hidden rounded-md border border-[color:var(--border)] px-1.5 py-0.5 font-mono text-xs text-[color:var(--text-tertiary)] sm:inline">
           ⌘K
         </kbd>
       )}

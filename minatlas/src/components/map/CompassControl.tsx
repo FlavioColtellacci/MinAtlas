@@ -45,7 +45,7 @@ export default function CompassControl({ bearingDeg, onResetNorth, onSetBearing 
   };
 
   return (
-    <div className="glass flex flex-col items-center gap-2 rounded-xl p-2">
+    <div className="glass flex flex-col items-center gap-2 rounded-xl p-2 max-md:gap-0 max-md:p-1.5">
       <button
         type="button"
         onClick={onResetNorth}
@@ -62,7 +62,7 @@ export default function CompassControl({ bearingDeg, onResetNorth, onSetBearing 
         onPointerMove={moveDrag}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className="relative h-12 w-12 rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)] transition-all duration-200 ease-out hover:border-[color:var(--accent)]"
+        className="relative hidden h-12 w-12 rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] md:block"
         aria-label="Rotate map"
       >
         <span

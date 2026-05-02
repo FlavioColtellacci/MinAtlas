@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Compass, X } from "lucide-react";
 import DetailCard from "@/components/detail/DetailCard";
 import FilterBar from "@/components/filters/FilterBar";
 import CompassControl from "@/components/map/CompassControl";
@@ -381,7 +382,7 @@ export default function MapPage() {
   }, [settings]);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-map">
+    <main className="relative h-[100dvh] min-h-0 w-full max-w-[100vw] overflow-x-hidden bg-map">
       <MapCanvas
         mineSites={layersEnabled ? visibleSites : []}
         tenements={layersEnabled ? visibleTenements : []}
@@ -402,9 +403,8 @@ export default function MapPage() {
         onTelemetryUpdate={handleTelemetryUpdate}
       />
 
-      <div className="absolute left-[18px] right-[18px] top-[18px] z-20 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="relative w-[560px] max-w-[calc(100vw-420px)]">
+      <div className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 md:left-[18px] md:right-[18px] md:top-[18px] md:gap-3">
+        <div className="relative min-w-0 basis-full md:basis-auto md:w-[560px] md:max-w-[calc(100vw-420px)]">
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -450,48 +450,79 @@ export default function MapPage() {
                 )}
               </div>
             ) : null}
-          </div>
-          <FilterBar
-            commodities={commodities}
-            states={states}
-            statuses={statuses}
-            selectedCommodities={selectedCommodities}
-            selectedStates={selectedStates}
-            selectedStatuses={selectedStatuses}
-            onToggleCommodity={(commodity) => toggleValue(commodity, selectedCommodities, setSelectedCommodities)}
-            onToggleState={(state) => toggleValue(state, selectedStates, setSelectedStates)}
-            onToggleStatus={(status) => toggleValue(status, selectedStatuses, setSelectedStatuses)}
-            onClearFilters={() => {
-              setSelectedCommodities([]);
-              setSelectedStates([]);
-              setSelectedStatuses([]);
+        </div>
+        <FilterBar
+          commodities={commodities}
+          states={states}
+          statuses={statuses}
+          selectedCommodities={selectedCommodities}
+          selectedStates={selectedStates}
+          selectedStatuses={selectedStatuses}
+          onToggleCommodity={(commodity) => toggleValue(commodity, selectedCommodities, setSelectedCommodities)}
+          onToggleState={(state) => toggleValue(state, selectedStates, setSelectedStates)}
+          onToggleStatus={(status) => toggleValue(status, selectedStatuses, setSelectedStatuses)}
+          onClearFilters={() => {
+            setSelectedCommodities([]);
+            setSelectedStates([]);
+            setSelectedStatuses([]);
+          }}
+          openPanelRequestToken={openFiltersRequestToken}
+        />
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => mapControls?.resetBearing()}
+            className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)] text-[color:var(--text-secondary)] shadow-[var(--shadow-float)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)] md:hidden"
+            aria-label="Reset map rotation to north"
+          >
+            <Compass className="h-4 w-4" />
+          </button>
+          <MapControls
+            layersActive={layersEnabled}
+            settingsActive={settingsOpen}
+            onToggleLayers={() => {
+              setLayersEnabled((current) => {
+                const next = !current;
+                if (!next) {
+                  setSelectedSite(null);
+                }
+                return next;
+              });
             }}
-            openPanelRequestToken={openFiltersRequestToken}
+            onToggleSettings={() => setSettingsOpen((current) => !current)}
           />
         </div>
-        <MapControls
-          layersActive={layersEnabled}
-          settingsActive={settingsOpen}
-          onToggleLayers={() => {
-            setLayersEnabled((current) => {
-              const next = !current;
-              if (!next) {
-                setSelectedSite(null);
-              }
-              return next;
-            });
-          }}
-          onToggleSettings={() => setSettingsOpen((current) => !current)}
-        />
       </div>
+
+      {settingsOpen ? (
+        <button
+          type="button"
+          className="fixed inset-0 z-[38] bg-[rgba(26,24,20,0.42)] backdrop-blur-[2px] md:hidden"
+          aria-label="Close map settings"
+          onClick={() => setSettingsOpen(false)}
+        />
+      ) : null}
 
       <div
         className={[
-          "glass absolute right-[18px] top-[76px] z-30 flex w-[360px] max-h-[78vh] flex-col gap-3 overflow-y-auto rounded-2xl p-4 text-sm transition-all duration-250 ease-out",
+          "glass absolute left-3 right-3 top-[76px] z-[45] flex max-h-[78vh] w-auto flex-col gap-3 overflow-y-auto rounded-2xl p-4 text-sm transition-all duration-250 ease-out md:left-auto md:right-[18px] md:w-[360px]",
           settingsOpen ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none -translate-y-1 opacity-0",
         ].join(" ")}
       >
-        <p className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">Map Settings</p>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[color:var(--text-primary)]">Map Settings</p>
+            <p className="text-xs text-[color:var(--text-tertiary)]">Adjust view, style, terrain and performance.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(false)}
+            className="rounded-lg px-2 py-1 text-[color:var(--text-tertiary)] transition-all duration-200 ease-out hover:text-[color:var(--text-primary)]"
+            aria-label="Close map settings"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
         <div className="space-y-2">
           <p className="text-[11px] uppercase tracking-wide text-[color:var(--text-tertiary)]">View</p>
@@ -711,7 +742,7 @@ export default function MapPage() {
         <p className="text-xs text-[color:var(--text-tertiary)]">Settings are saved automatically on this device.</p>
       </div>
 
-      <div className="absolute bottom-10 right-[18px] z-20 flex flex-col items-end gap-1">
+      <div className="absolute bottom-10 right-[18px] z-40 hidden flex-col items-end gap-1 md:flex md:flex-col">
         <div className="flex items-end gap-2">
           <CompassControl
             bearingDeg={mapTelemetry.bearingDeg}
@@ -719,7 +750,7 @@ export default function MapPage() {
             onSetBearing={(bearing) => mapControls?.setBearing(bearing)}
           />
 
-          <div className="glass flex flex-col overflow-hidden rounded-xl">
+          <div className="glass hidden flex-col overflow-hidden rounded-xl md:flex md:flex-col">
             <button
               type="button"
               onClick={() => mapControls?.zoomIn()}
@@ -738,16 +769,16 @@ export default function MapPage() {
           </div>
         </div>
 
-        <div className="glass pointer-events-none rounded-lg px-2 py-1 text-[10px] text-[color:var(--text-secondary)]">
+        <div className="glass pointer-events-none hidden rounded-lg px-2 py-1 text-[10px] text-[color:var(--text-secondary)] md:block">
           <p>Distance {mapTelemetry.viewDistanceKm.toLocaleString()} km</p>
         </div>
 
-        <div className="glass pointer-events-none max-w-[280px] rounded-lg px-2 py-1 text-[10px] text-[color:var(--text-secondary)]">
+        <div className="glass pointer-events-none hidden max-w-[280px] rounded-lg px-2 py-1 text-[10px] text-[color:var(--text-secondary)] md:block">
           <p className="truncate">DMIRS · Geoscience Australia · Updated 2h ago</p>
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 z-30 -translate-x-1/2">
+      <div className="fixed z-30 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0.75rem))] max-md:left-1/2 max-md:w-[min(26rem,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:-translate-x-1/2 md:absolute md:bottom-4 md:left-1/2 md:right-auto md:w-auto md:max-w-none md:translate-x-0 md:-translate-x-1/2">
         <DetailCard
           site={selectedSite}
           onZoomToSite={() => {

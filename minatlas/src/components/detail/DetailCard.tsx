@@ -1,8 +1,9 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
-import { ChevronsDownUp, ChevronsUpDown, Search, SlidersHorizontal, Target } from "lucide-react";
-import type { MineSite } from "@/types/mining";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { ChevronsDownUp, ChevronsUpDown, ExternalLink, Search, SlidersHorizontal, Target } from "lucide-react";
+import { searchWeb, type BraveResult } from "@/lib/braveSearch";
+import type { MineSite, Tenement } from "@/types/mining";
 
 const COMMODITY_NAMES: Record<string, string> = {
   AG: "Silver",
@@ -19,6 +20,9 @@ const COMMODITY_NAMES: Record<string, string> = {
 
 interface DetailCardProps {
   site: MineSite | null;
+  nearbySites?: Array<MineSite & { distanceKm: number }>;
+  tenementsAtSite?: Tenement[];
+  onSelectNearby?: (site: MineSite) => void;
   onZoomToSite?: () => void;
   onGuideClickMarker?: () => void;
   onGuideSearch?: () => void;
@@ -33,15 +37,42 @@ function getStatusLabel(status: MineSite["status"]) {
     .join(" ");
 }
 
+function formatDistanceKm(distanceKm: number) {
+  if (!Number.isFinite(distanceKm)) return "Nearby";
+  return distanceKm < 10 ? `${distanceKm.toFixed(1)} km` : `${Math.round(distanceKm)} km`;
+}
+
+function getTenementTitle(tenement: Tenement) {
+  return [tenement.tenement_id ?? "Tenement", tenement.holder, tenement.status].filter(Boolean).join(" / ");
+}
+
 export default function DetailCard({
   site,
+  nearbySites = [],
+  tenementsAtSite = [],
+  onSelectNearby,
   onZoomToSite = () => undefined,
   onGuideClickMarker = () => undefined,
   onGuideSearch = () => undefined,
   onGuideFilters = () => undefined,
 }: DetailCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
+  const [webResults, setWebResults] = useState<BraveResult[]>([]);
+  const [isWebSearchLoading, setIsWebSearchLoading] = useState(false);
+  const [webSearchError, setWebSearchError] = useState<string | null>(null);
+  const [hasWebSearchRun, setHasWebSearchRun] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const siteIdRef = useRef<string | null>(site?.id ?? null);
   const hasSelection = Boolean(site);
+
+  useEffect(() => {
+    siteIdRef.current = site?.id ?? null;
+    setWebResults([]);
+    setWebSearchError(null);
+    setIsWebSearchLoading(false);
+    setHasWebSearchRun(false);
+    setSearchedQuery(null);
+  }, [site?.id]);
 
   const statusPill = site?.status === "operating" ? "Active" : "Tracked";
 
@@ -96,6 +127,33 @@ export default function DetailCard({
         : statItems.length === 2
           ? "grid-cols-2"
           : "grid-cols-1";
+  const nearbySitesPreview = nearbySites.slice(0, 5);
+  const tenementPreview = tenementsAtSite.slice(0, 3);
+  const webSearchQuery = site ? [site.name, site.operator, site.state, "mining"].filter(Boolean).join(" ") : "";
+
+  const handleWebSearch = async () => {
+    if (!site || isWebSearchLoading) return;
+
+    const selectedSiteId = site.id;
+    setIsWebSearchLoading(true);
+    setWebSearchError(null);
+    setHasWebSearchRun(true);
+    setSearchedQuery(webSearchQuery);
+
+    try {
+      const results = await searchWeb(webSearchQuery);
+      if (siteIdRef.current !== selectedSiteId) return;
+      setWebResults(results);
+    } catch (error) {
+      if (siteIdRef.current !== selectedSiteId) return;
+      setWebResults([]);
+      setWebSearchError(error instanceof Error ? error.message : "Unable to search the web right now");
+    } finally {
+      if (siteIdRef.current === selectedSiteId) {
+        setIsWebSearchLoading(false);
+      }
+    }
+  };
 
   return (
     <article
@@ -148,12 +206,12 @@ export default function DetailCard({
 
       <div
         className={[
-          "overflow-hidden transition-all duration-300 ease-out",
+          "transition-all duration-300 ease-out",
           isMinimized
-            ? "max-h-0 opacity-0"
+            ? "max-h-0 overflow-hidden opacity-0"
             : hasSelection
-              ? "mt-2 max-h-72 opacity-100 max-md:mt-2 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overflow-y-auto max-md:overscroll-y-contain max-md:pb-1 max-md:touch-pan-y"
-              : "mt-1.5 max-h-72 opacity-100 max-md:mt-1 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overflow-y-auto max-md:overscroll-y-contain max-md:pb-1 max-md:touch-pan-y",
+              ? "premium-scrollbar mt-2 max-h-[min(70vh,38rem)] overflow-y-auto pr-1 opacity-100 max-md:mt-2 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overscroll-y-contain max-md:pb-1 max-md:pr-0 max-md:touch-pan-y"
+              : "mt-1.5 max-h-72 overflow-y-auto opacity-100 max-md:mt-1 max-md:min-h-0 max-md:max-h-none max-md:flex-1 max-md:overscroll-y-contain max-md:pb-1 max-md:touch-pan-y",
         ].join(" ")}
       >
         {hasSelection ? (
@@ -171,11 +229,114 @@ export default function DetailCard({
               </div>
             ) : null}
 
-            {statItems.length < 2 ? (
-              <p className="mt-3 border-t border-[color:var(--border)] pt-3 text-xs text-[color:var(--text-tertiary)]">
-                Limited public data is currently available for this site. Core map location and status remain available.
-              </p>
-            ) : null}
+            <div className="mt-4 space-y-3 border-t border-[color:var(--border)] pt-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Context</p>
+                <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
+                  Nearby map data and an optional web lookup for this site.
+                </p>
+              </div>
+
+              <section className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--accent-subtle)] p-2.5">
+                <p className="text-xs font-medium text-[color:var(--text-primary)]">Nearby sites</p>
+                {nearbySitesPreview.length > 0 ? (
+                  <div className="mt-2 grid gap-1.5">
+                    {nearbySitesPreview.map((nearbySite) => (
+                      <button
+                        key={nearbySite.id}
+                        type="button"
+                        onClick={() => onSelectNearby?.(nearbySite)}
+                        disabled={!onSelectNearby}
+                        className="w-full rounded-lg border border-transparent px-2 py-1.5 text-left transition-all duration-150 ease-out enabled:hover:border-[color:var(--accent)] enabled:hover:bg-[color:var(--bg-frosted)] disabled:cursor-default"
+                      >
+                        <span className="block truncate text-xs text-[color:var(--text-primary)]">{nearbySite.name}</span>
+                        <span className="block truncate text-[11px] text-[color:var(--text-tertiary)]">
+                          {formatDistanceKm(nearbySite.distanceKm)} · {nearbySite.state ?? "Australia"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-[color:var(--text-tertiary)]">No nearby sites are loaded yet.</p>
+                )}
+              </section>
+
+              {tenementPreview.length > 0 ? (
+                <section>
+                  <p className="text-xs font-medium text-[color:var(--text-primary)]">Tenement(s) at this point</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {tenementPreview.map((tenement) => (
+                      <span
+                        key={tenement.id}
+                        className="rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)] px-2 py-1 text-[11px] text-[color:var(--text-secondary)]"
+                      >
+                        {getTenementTitle(tenement)}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="rounded-xl border border-[color:var(--border-subtle)] p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-[color:var(--text-primary)]">Search the web</p>
+                    {searchedQuery ? (
+                      <p className="mt-0.5 truncate text-[11px] text-[color:var(--text-tertiary)]">{searchedQuery}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWebSearch}
+                    disabled={isWebSearchLoading}
+                    className="inline-flex min-w-0 max-w-[14rem] shrink items-center gap-1.5 rounded-full bg-[color:var(--status-active-bg)] px-2.5 py-1 text-xs text-[color:var(--status-active)] transition-opacity duration-200 ease-out hover:opacity-85 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span className="truncate">{isWebSearchLoading ? "Searching..." : `Search the web for ${site?.name}`}</span>
+                  </button>
+                </div>
+
+                {webSearchError ? (
+                  <p className="mt-2 text-xs text-red-400" role="alert">
+                    {webSearchError}
+                  </p>
+                ) : null}
+
+                {hasWebSearchRun && !isWebSearchLoading && !webSearchError ? (
+                  webResults.length > 0 ? (
+                    <div className="mt-2 space-y-1.5">
+                      {webResults.map((result) => (
+                        <a
+                          key={result.url}
+                          href={result.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block rounded-lg border border-transparent px-2 py-1.5 transition-all duration-150 ease-out hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-subtle)]"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate text-xs text-[color:var(--text-primary)]">{result.title}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0 text-[color:var(--text-tertiary)]" />
+                          </span>
+                          {result.description ? (
+                            <span className="mt-0.5 block truncate text-[11px] text-[color:var(--text-tertiary)]">
+                              {result.description}
+                            </span>
+                          ) : null}
+                        </a>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-[color:var(--text-tertiary)]">No web results found for this site.</p>
+                  )
+                ) : null}
+
+                {hasWebSearchRun ? (
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
+                    Web results are not verified by MinAtlas.
+                  </p>
+                ) : null}
+              </section>
+            </div>
           </>
         ) : (
           <div className="space-y-2 max-md:space-y-1.5">

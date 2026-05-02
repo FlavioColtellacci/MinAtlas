@@ -778,7 +778,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <div className="fixed z-30 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0.75rem))] max-md:left-1/2 max-md:w-[min(26rem,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:-translate-x-1/2 md:absolute md:bottom-4 md:left-1/2 md:right-auto md:w-auto md:max-w-none md:translate-x-0 md:-translate-x-1/2">
+      <div className="fixed z-30 max-md:bottom-[max(1rem,env(safe-area-inset-bottom,0.75rem))] max-md:left-1/2 max-md:w-[min(26rem,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:-translate-x-1/2 md:absolute md:bottom-4 md:left-1/2 md:w-max md:max-w-none md:-translate-x-1/2">
         <DetailCard
           site={selectedSite}
           onZoomToSite={() => {

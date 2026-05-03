@@ -56,6 +56,25 @@ export interface TenementRow {
   boundary_geojson: GeoJSON.MultiPolygon | null;
 }
 
+/** Quantized WGS84 viewport bounds (decimal degrees) for stable React Query keys and bbox RPCs. */
+export interface QuantizedViewportBBox {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+/** Map view telemetry: distances, rotation, zoom, and optional viewport bounds after moveend/load. */
+export interface MapTelemetrySnapshot {
+  viewDistanceKm: number;
+  bearingDeg: number;
+  zoomLevel: number;
+  west: number | null;
+  south: number | null;
+  east: number | null;
+  north: number | null;
+}
+
 export interface MapFilters {
   commodities: string[];
   states: string[];

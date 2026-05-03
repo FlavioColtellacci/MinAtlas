@@ -5,7 +5,7 @@ import mapboxgl from "mapbox-gl";
 import Map, { Marker, type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { GLOBE_CENTER, MAP_STYLE, WA_TARGET } from "@/lib/mapbox";
-import type { MineSite, Tenement } from "@/types/mining";
+import type { MapTelemetrySnapshot, MineSite, Tenement } from "@/types/mining";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const DEM_SOURCE_ID = "mapbox-dem";
@@ -16,11 +16,11 @@ const TENEMENTS_SOURCE_ID = "tenements-source";
 const TENEMENTS_FILL_LAYER_ID = "tenements-fill-layer";
 const TENEMENTS_LINE_LAYER_ID = "tenements-line-layer";
 const EARTH_RADIUS_KM = 6371;
+const BBOX_DECIMALS = 4;
 
-interface MapTelemetry {
-  viewDistanceKm: number;
-  bearingDeg: number;
-  zoomLevel: number;
+function quantizeDegree(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
 }
 
 interface MapCanvasProps {
@@ -48,7 +48,7 @@ interface MapCanvasProps {
     setBearing: (bearing: number) => void;
     zoomToSiteWithFocus: (site: MineSite) => void;
   }) => void;
-  onTelemetryUpdate?: (telemetry: MapTelemetry) => void;
+  onTelemetryUpdate?: (telemetry: MapTelemetrySnapshot) => void;
 }
 
 export default function MapCanvas({
@@ -85,7 +85,7 @@ export default function MapCanvas({
   const hasAttachedMapHandlers = useRef(false);
   const mapHandlerCleanupRef = useRef<(() => void) | null>(null);
   const telemetryFrameRef = useRef<number | null>(null);
-  const lastTelemetryRef = useRef<MapTelemetry | null>(null);
+  const lastTelemetryRef = useRef<MapTelemetrySnapshot | null>(null);
   const temporaryAutoRotateRef = useRef(false);
   const userInteractionCleanupRef = useRef<(() => void) | null>(null);
   const [hoveredSite, setHoveredSite] = useState<MineSite | null>(null);
@@ -138,25 +138,40 @@ export default function MapCanvas({
     return 2 * EARTH_RADIUS_KM * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  const emitTelemetry = (map: mapboxgl.Map) => {
+  const emitTelemetry = (map: mapboxgl.Map, options: { updateViewportBounds: boolean }) => {
     const center = map.getCenter();
     const bounds = map.getBounds();
     if (!bounds) return;
-    const telemetry: MapTelemetry = {
+    const previous = lastTelemetryRef.current;
+    const telemetry: MapTelemetrySnapshot = {
       viewDistanceKm: Math.max(
-      1,
-      Math.round(haversineDistanceKm(center.lat, bounds.getWest(), center.lat, bounds.getEast())),
+        1,
+        Math.round(haversineDistanceKm(center.lat, bounds.getWest(), center.lat, bounds.getEast())),
       ),
       // Rounded bearing prevents excessive React updates during drag/rotate.
       bearingDeg: Math.round(((map.getBearing() % 360) + 360) % 360),
       zoomLevel: Math.round(map.getZoom() * 10) / 10,
+      west: previous?.west ?? null,
+      south: previous?.south ?? null,
+      east: previous?.east ?? null,
+      north: previous?.north ?? null,
     };
+    if (options.updateViewportBounds) {
+      telemetry.west = quantizeDegree(bounds.getWest(), BBOX_DECIMALS);
+      telemetry.south = quantizeDegree(bounds.getSouth(), BBOX_DECIMALS);
+      telemetry.east = quantizeDegree(bounds.getEast(), BBOX_DECIMALS);
+      telemetry.north = quantizeDegree(bounds.getNorth(), BBOX_DECIMALS);
+    }
     const lastTelemetry = lastTelemetryRef.current;
     if (
       lastTelemetry &&
       lastTelemetry.viewDistanceKm === telemetry.viewDistanceKm &&
       lastTelemetry.bearingDeg === telemetry.bearingDeg &&
-      lastTelemetry.zoomLevel === telemetry.zoomLevel
+      lastTelemetry.zoomLevel === telemetry.zoomLevel &&
+      lastTelemetry.west === telemetry.west &&
+      lastTelemetry.south === telemetry.south &&
+      lastTelemetry.east === telemetry.east &&
+      lastTelemetry.north === telemetry.north
     ) {
       return;
     }
@@ -168,7 +183,7 @@ export default function MapCanvas({
     if (telemetryFrameRef.current !== null) return;
     telemetryFrameRef.current = window.requestAnimationFrame(() => {
       telemetryFrameRef.current = null;
-      emitTelemetry(map);
+      emitTelemetry(map, { updateViewportBounds: false });
     });
   };
 
@@ -510,7 +525,7 @@ export default function MapCanvas({
     hasAttachedMapHandlers.current = true;
 
     const handleMove = () => scheduleTelemetry(map);
-    const handleMoveEnd = () => emitTelemetry(map);
+    const handleMoveEnd = () => emitTelemetry(map, { updateViewportBounds: true });
     const handleMineSiteClick = (event: mapboxgl.MapLayerMouseEvent) => {
       event.originalEvent.stopPropagation();
       const feature = event.features?.[0];
@@ -597,7 +612,7 @@ export default function MapCanvas({
     });
 
     attachMapHandlers(map);
-    emitTelemetry(map);
+    emitTelemetry(map, { updateViewportBounds: true });
 
     if (hasPlayedIntro.current) return;
     hasPlayedIntro.current = true;

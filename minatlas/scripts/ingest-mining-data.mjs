@@ -5,8 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 import shapefile from "shapefile";
 
 const DRY_RUN = process.env.DRY_RUN === "true";
+const DERIVE_PERTH_DISTANCE = process.env.DERIVE_PERTH_DISTANCE !== "false";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const PERTH_CBD = { lat: -31.9523, lng: 115.8613 };
 
 const paths = {
   mindexGeoJson: "src/data/seed/Mindex_DMIRS_001_WA_GDA2020_Public_GeoJSON/Mindex_DMIRS_001_WA_GDA2020_Public.geojson",
@@ -63,6 +65,77 @@ function asNumber(value) {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeUnit(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, "_");
+}
+
+function toOunces(value, unit) {
+  const qty = asNumber(value);
+  if (qty === null) return null;
+  const normalized = normalizeUnit(unit);
+  if (!normalized) return qty;
+
+  if (["oz", "ounce", "ounces", "troy_oz", "troz", "ozt"].includes(normalized)) return qty;
+  if (["g", "gram", "grams"].includes(normalized)) return qty / 31.1034768;
+  if (["kg", "kilogram", "kilograms"].includes(normalized)) return (qty * 1000) / 31.1034768;
+  if (["t", "tonne", "tonnes", "metric_ton", "metric_tonne"].includes(normalized)) return (qty * 1_000_000) / 31.1034768;
+  return null;
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const earthRadiusKm = 6371;
+  const toRadians = (degrees) => (degrees * Math.PI) / 180;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function deriveDistanceToPerthKm(lat, lng) {
+  if (!DERIVE_PERTH_DISTANCE) return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const value = haversineKm(lat, lng, PERTH_CBD.lat, PERTH_CBD.lng);
+  return Number.isFinite(value) ? Number(value.toFixed(1)) : null;
+}
+
+function extractAnnualProductionOz(properties) {
+  const directOz = asNumber(
+    getFirst(properties, [
+      "annual_production_oz",
+      "ANNUAL_PRODUCTION_OZ",
+      "ANNUAL_PROD_OZ",
+      "PRODUCTION_OZ",
+      "PROD_OZ",
+      "AU_PROD_OZ",
+      "GOLD_OZ_PA",
+      "OZ_PA",
+    ]),
+  );
+  if (directOz !== null) return directOz;
+
+  const quantity = getFirst(properties, [
+    "annual_production",
+    "ANNUAL_PRODUCTION",
+    "ANNUAL_PROD",
+    "PRODUCTION",
+    "PROD_QTY",
+  ]);
+  const unit = getFirst(properties, [
+    "annual_production_unit",
+    "ANNUAL_PRODUCTION_UNIT",
+    "ANNUAL_PROD_UNIT",
+    "PRODUCTION_UNIT",
+    "PROD_QTY_UNIT",
+  ]);
+  return toOunces(quantity, unit);
 }
 
 function normalizeCommodity(item) {
@@ -152,12 +225,12 @@ function baseMineCandidate(properties, lat, lng, overrides = {}) {
     lng,
     status: normalizeStatus(getFirst(properties, ["site_stage", "STAGE", "TENSTATUS", "SITE_TYPE"], "exploration")),
     productionType: normalizeProductionType(getFirst(properties, ["site_sub_t", "SUB_TYPE", "SITE_SUB_T"])),
-    operator: getFirst(properties, ["operator", "HOLDER1"]),
+    operator: getFirst(properties, ["operator", "OPERATOR", "HOLDER1", "HOLDER", "OWNER", "COMPANY"]),
     state: "Western Australia",
-    roster: null,
-    nearestTown: getFirst(properties, ["LGA_NAME"]),
-    distanceToPerthKm: null,
-    annualProductionOz: null,
+    roster: getFirst(properties, ["roster", "ROSTER", "SHIFT", "SHIFT_TYPE", "WORK_ROSTER", "WORK_PATTERN"]),
+    nearestTown: getFirst(properties, ["nearest_town", "NEAREST_TOWN", "TOWN", "LOCALITY", "LOCALITY_NA", "LGA_NAME"]),
+    distanceToPerthKm: deriveDistanceToPerthKm(lat, lng),
+    annualProductionOz: extractAnnualProductionOz(properties),
     commodities: new Set(
       toCommodityList(
         getFirst(properties, ["site_commo", "COMMODITIE", "TARGET_COM", "target_com", "EST_COM", "PRI_P_COM"]),
@@ -179,7 +252,9 @@ function mergeMineCandidate(existing, incoming) {
   existing.status = pickPreferredStatus(existing.status, incoming.status);
   existing.productionType = existing.productionType ?? incoming.productionType;
   existing.operator = existing.operator ?? incoming.operator;
+  existing.roster = existing.roster ?? incoming.roster;
   existing.nearestTown = existing.nearestTown ?? incoming.nearestTown;
+  existing.distanceToPerthKm = existing.distanceToPerthKm ?? incoming.distanceToPerthKm;
   existing.annualProductionOz = existing.annualProductionOz ?? incoming.annualProductionOz;
   incoming.commodities.forEach((commodity) => existing.commodities.add(commodity));
   incoming.sources.forEach((source) => existing.sources.add(source));

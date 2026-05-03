@@ -10,9 +10,9 @@ import MapControls from "@/components/map/MapControls";
 import MapOnboardingTour, { MAP_TOUR_STORAGE_KEY } from "@/components/map/MapOnboardingTour";
 import SearchBar from "@/components/search/SearchBar";
 import { useMineSites } from "@/hooks/useMineSites";
-import { useTenements } from "@/hooks/useTenements";
+import { useTenementsForBbox } from "@/hooks/useTenements";
 import { haversineKm, pointInMultiPolygon } from "@/lib/geo";
-import type { MineSite } from "@/types/mining";
+import type { MapTelemetrySnapshot, MineSite, QuantizedViewportBBox } from "@/types/mining";
 
 type BasemapMode = "light" | "dark" | "satellite";
 type LabelDensity = "clean" | "detailed";
@@ -31,12 +31,6 @@ interface MapSettingsState {
   showTenementBoundaries: boolean;
   qualityMode: QualityMode;
   maxPointsRendered: number;
-}
-
-interface MapTelemetryState {
-  viewDistanceKm: number;
-  bearingDeg: number;
-  zoomLevel: number;
 }
 
 const SETTINGS_STORAGE_KEY = "minatlas-map-settings-v1";
@@ -225,18 +219,31 @@ function selectMineSitesForMap(sites: MineSite[], maxPointsRendered: number, zoo
   return selectedSites;
 }
 
+function telemetryToViewportBbox(telemetry: MapTelemetrySnapshot): QuantizedViewportBBox | null {
+  const { west, south, east, north } = telemetry;
+  if (west == null || south == null || east == null || north == null) return null;
+  return { west, south, east, north };
+}
+
 export default function MapPage() {
   const { data: mineSites = [] } = useMineSites();
-  const { data: tenements = [] } = useTenements();
   const [selectedSite, setSelectedSite] = useState<MineSite | null>(null);
   const [layersEnabled, setLayersEnabled] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState<MapSettingsState>(DEFAULT_SETTINGS);
-  const [mapTelemetry, setMapTelemetry] = useState<MapTelemetryState>({
+  const [mapTelemetry, setMapTelemetry] = useState<MapTelemetrySnapshot>({
     viewDistanceKm: 0,
     bearingDeg: 0,
     zoomLevel: 2.9,
+    west: null,
+    south: null,
+    east: null,
+    north: null,
+  });
+  const viewportBbox = useMemo(() => telemetryToViewportBbox(mapTelemetry), [mapTelemetry]);
+  const { data: tenements = [] } = useTenementsForBbox(viewportBbox, mapTelemetry.zoomLevel, {
+    layersEnabled,
   });
   const [selectedCommodities, setSelectedCommodities] = useState<string[]>([]);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
@@ -256,11 +263,15 @@ export default function MapPage() {
   const mapStyleUrl = MAP_STYLE_BY_BASEMAP[settings.basemap];
   const maxPointsRendered = normalizeMaxPointsRendered(settings.maxPointsRendered);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const handleTelemetryUpdate = useCallback((next: MapTelemetryState) => {
+  const handleTelemetryUpdate = useCallback((next: MapTelemetrySnapshot) => {
     setMapTelemetry((previous) =>
       previous.viewDistanceKm === next.viewDistanceKm &&
       previous.bearingDeg === next.bearingDeg &&
-      previous.zoomLevel === next.zoomLevel
+      previous.zoomLevel === next.zoomLevel &&
+      previous.west === next.west &&
+      previous.south === next.south &&
+      previous.east === next.east &&
+      previous.north === next.north
         ? previous
         : next,
     );

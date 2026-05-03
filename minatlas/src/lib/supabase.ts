@@ -1,8 +1,30 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+/** Narrow schema typing for RPCs used by the app (expand when generating full types). */
+type AppDatabase = {
+  public: {
+    Tables: Record<string, never>;
+    Views: Record<string, never>;
+    Functions: {
+      tenements_in_bbox: {
+        Args: {
+          min_lng: number;
+          min_lat: number;
+          max_lng: number;
+          max_lat: number;
+          max_rows?: number;
+        };
+        Returns: Record<string, unknown>[];
+      };
+    };
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
-export function getSupabaseClient() {
+let supabaseClient: SupabaseClient<AppDatabase> | null = null;
+
+export function getSupabaseClient(): SupabaseClient<AppDatabase> {
   if (supabaseClient) return supabaseClient;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,6 +34,6 @@ export function getSupabaseClient() {
     throw new Error("Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
   }
 
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  supabaseClient = createClient<AppDatabase>(supabaseUrl, supabaseAnonKey);
   return supabaseClient;
 }

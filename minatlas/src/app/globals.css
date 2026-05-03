@@ -140,3 +140,10 @@
 .premium-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: rgba(26, 24, 20, 0.28);
 }
+
+/* Map onboarding: spotlight ring on live controls (above tour overlay) */
+.minatlas-tour-anchor-ring {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 0.875rem;
+}

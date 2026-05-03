@@ -7,6 +7,7 @@ import FilterBar from "@/components/filters/FilterBar";
 import CompassControl from "@/components/map/CompassControl";
 import MapCanvas from "@/components/map/MapCanvas";
 import MapControls from "@/components/map/MapControls";
+import MapOnboardingTour, { MAP_TOUR_STORAGE_KEY } from "@/components/map/MapOnboardingTour";
 import SearchBar from "@/components/search/SearchBar";
 import { useMineSites } from "@/hooks/useMineSites";
 import { useTenements } from "@/hooks/useTenements";
@@ -426,7 +427,10 @@ export default function MapPage() {
       />
 
       <div className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 md:left-[18px] md:right-[18px] md:top-[18px] md:gap-3">
-        <div className="relative min-w-0 basis-full md:basis-auto md:w-[560px] md:max-w-[calc(100vw-420px)]">
+        <div
+          data-tour="map-search"
+          className="relative min-w-0 basis-full md:basis-auto md:w-[560px] md:max-w-[calc(100vw-420px)]"
+        >
             <SearchBar
               value={searchQuery}
               onChange={setSearchQuery}
@@ -473,6 +477,7 @@ export default function MapPage() {
               </div>
             ) : null}
         </div>
+        <div data-tour="map-filters" className="shrink-0">
         <FilterBar
           commodities={commodities}
           states={states}
@@ -490,7 +495,8 @@ export default function MapPage() {
           }}
           openPanelRequestToken={openFiltersRequestToken}
         />
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        </div>
+        <div data-tour="map-controls" className="ml-auto flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={() => mapControls?.resetBearing()}
@@ -762,6 +768,20 @@ export default function MapPage() {
           Reset all settings
         </button>
         <p className="text-xs text-[color:var(--text-tertiary)]">Settings are saved automatically on this device.</p>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(MAP_TOUR_STORAGE_KEY);
+              window.dispatchEvent(new Event("minatlas:replay-map-tour"));
+            }
+            setSettingsOpen(false);
+          }}
+          className="w-full rounded-lg border border-[color:var(--border-subtle)] px-3 py-2 text-left text-xs text-[color:var(--text-secondary)] transition-all duration-200 ease-out hover:border-[color:var(--accent)] hover:text-[color:var(--text-primary)]"
+        >
+          Replay guided tour
+        </button>
       </div>
 
       <div className="absolute bottom-10 right-[18px] z-40 hidden flex-col items-end gap-1 md:flex md:flex-col">
@@ -822,6 +842,7 @@ export default function MapPage() {
         />
       </div>
 
+      <MapOnboardingTour />
     </main>
   );
 }

@@ -21,6 +21,7 @@ const config: Config = {
         "border-subtle": "var(--border-subtle)",
         "status-active": "var(--status-active)",
         "status-active-bg": "var(--status-active-bg)",
+        muted: "var(--muted)",
       },
       fontFamily: {
         display: ["var(--font-display)"],
@@ -30,6 +31,15 @@ const config: Config = {
       boxShadow: {
         float: "var(--shadow-float)",
         card: "var(--shadow-card)",
+      },
+      keyframes: {
+        "detail-skeleton-sheen": {
+          "0%": { transform: "translate3d(-100%, 0, 0)" },
+          "100%": { transform: "translate3d(350%, 0, 0)" },
+        },
+      },
+      animation: {
+        "detail-skeleton-sheen": "detail-skeleton-sheen 2.1s cubic-bezier(0.4, 0, 0.2, 1) infinite",
       },
     },
   },

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { buildMineSiteSlugResolution, getAllMineSitesForSeo } from "@/lib/mineSitesServer";
 import { absoluteUrl } from "@/lib/site";
 
 const routes = [
@@ -24,10 +25,24 @@ const routes = [
   },
 ] as const;
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  return routes.map((route) => ({
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const staticEntries: MetadataRoute.Sitemap = routes.map((route) => ({
     url: absoluteUrl(route.path),
     changeFrequency: route.changeFrequency,
     priority: route.priority,
   }));
+
+  const sites = await getAllMineSitesForSeo();
+  const resolution = buildMineSiteSlugResolution(sites);
+  const slugs = Array.from(resolution.siteByCanonicalSlug.keys()).sort((a, b) =>
+    a.localeCompare(b),
+  );
+
+  const siteEntries: MetadataRoute.Sitemap = slugs.map((slug) => ({
+    url: absoluteUrl(`/site/${slug}`),
+    changeFrequency: "weekly",
+    priority: 0.65,
+  }));
+
+  return [...staticEntries, ...siteEntries];
 }

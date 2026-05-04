@@ -50,6 +50,25 @@ function hasNonEmptyTrim(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+/** DMIRS often supplies LGA / shire names in `nearest_town`; those are regions, not settlements. */
+function looksLikeGovernmentArea(name: string): boolean {
+  const n = name.toUpperCase();
+  return /\b(SHIRE|LGA|REGION|TOWN OF|CITY OF|COUNTY|DISTRICT)\b/.test(n);
+}
+
+/** `distance_to_perth_km` is always to Perth CBD — never pair it with another label as "km from that label". */
+function buildLocationSummary(site: MineSite): string | null {
+  const parts: string[] = [];
+  if (site.distance_to_perth_km != null && site.distance_to_perth_km > 0) {
+    parts.push(`${Math.round(site.distance_to_perth_km)} km from Perth`);
+  }
+  if (hasNonEmptyTrim(site.nearest_town)) {
+    const label = site.nearest_town!.trim();
+    parts.push(looksLikeGovernmentArea(label) ? `Region: ${label}` : `Near ${label}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /** Matches plan / SQL: no operator, no town label, no positive distance to Perth. */
 function isSparseSummarySite(site: MineSite) {
   return (
@@ -114,10 +133,7 @@ export default function DetailCard({
   ) : null;
   const rosterLabel = site?.roster ?? null;
 
-  const locationLabel =
-    site?.distance_to_perth_km && site.distance_to_perth_km > 0
-      ? `${site.distance_to_perth_km}km from ${site.nearest_town ?? "nearest town"}`
-      : site?.nearest_town ?? null;
+  const locationLabel = site ? buildLocationSummary(site) : null;
   const siteStatusLabel = site ? getStatusLabel(site.status) : null;
 
   const summaryParts = [site?.operator, locationLabel].filter((value): value is string => Boolean(value));

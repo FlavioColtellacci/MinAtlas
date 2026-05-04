@@ -23,7 +23,8 @@ const navItems = [
 ];
 
 const stats = [
-  { value: "2,847+", label: "Mine sites indexed" },
+  { value: "4,500+", label: "Active mine sites" },
+  { value: "48,000+", label: "Recorded sites indexed" },
   { value: "Daily", label: "Refresh cadence" },
   { value: "11", label: "Commodities tracked" },
 ];
@@ -34,7 +35,7 @@ const dataSources = [
     dataset: "MINEDEX Mine Sites",
     type: "Points",
     frequency: "Daily",
-    records: "2,847+",
+    records: "4,500+",
     href: "https://minedex.dmirs.wa.gov.au/Web/home",
   },
   {
@@ -485,7 +486,7 @@ export default function DataPage() {
         </section>
 
         <Reveal id="sources" className="mx-auto max-w-6xl px-5 pb-24 pt-16 text-center sm:px-8 lg:px-12">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((stat) => (
               <div
                 key={stat.label}

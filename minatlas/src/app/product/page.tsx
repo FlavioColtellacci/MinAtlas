@@ -24,7 +24,8 @@ const navItems = [
 const mapBullets = [
   "Interactive layers by commodity, status and region",
   "Updated daily from DMIRS and Geoscience Australia",
-  "2,847+ mine sites across Australia",
+  "4,500+ active mine sites in the live index",
+  "48,000+ recorded sites across full coverage",
 ];
 
 const pillars = [
@@ -111,7 +112,8 @@ const audiences = [
 ];
 
 const stats = [
-  { value: "2,847+", label: "Mine sites" },
+  { value: "4,500+", label: "Active mine sites" },
+  { value: "48,000+", label: "Recorded sites" },
   { value: "Daily", label: "Refresh cadence" },
   { value: "Official", label: "Data sources" },
 ];
@@ -673,7 +675,7 @@ export default function ProductPage() {
             <h2 className="font-display text-5xl tracking-[-0.045em] sm:text-7xl">
               Built on Australia&apos;s public mining record.
             </h2>
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat) => (
                 <div
                   key={stat.label}

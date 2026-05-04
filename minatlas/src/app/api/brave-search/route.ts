@@ -78,6 +78,17 @@ function normalizeResult(result: BraveWebResult): SlimBraveResult | null {
   };
 }
 
+const DEFAULT_RESULT_COUNT = 5;
+const MAX_RESULT_COUNT = 20;
+
+function getValidatedResultCount(searchParams: URLSearchParams): number {
+  const raw = searchParams.get("count");
+  if (raw == null || raw === "") return DEFAULT_RESULT_COUNT;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1 || n > MAX_RESULT_COUNT) return DEFAULT_RESULT_COUNT;
+  return n;
+}
+
 function getValidatedQuery(request: Request): string | Response {
   const { searchParams } = new URL(request.url);
   const rawQuery = searchParams.get("q");
@@ -104,6 +115,9 @@ export async function GET(request: Request) {
   const validatedQuery = getValidatedQuery(request);
   if (validatedQuery instanceof Response) return validatedQuery;
 
+  const { searchParams } = new URL(request.url);
+  const resultCount = getValidatedResultCount(searchParams);
+
   const apiKey = process.env.BRAVE_SEARCH_API_KEY;
   if (!apiKey) {
     return Response.json(
@@ -112,7 +126,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const cacheKey = validatedQuery.toLowerCase();
+  const cacheKey = `${validatedQuery.toLowerCase()}\0${resultCount}`;
   const cachedResults = getCachedResults(cacheKey);
   if (cachedResults) {
     return Response.json({ results: cachedResults }, { headers: successHeaders });
@@ -120,7 +134,7 @@ export async function GET(request: Request) {
 
   const url = new URL(BRAVE_SEARCH_URL);
   url.searchParams.set("q", validatedQuery);
-  url.searchParams.set("count", "5");
+  url.searchParams.set("count", String(resultCount));
 
   try {
     const response = await fetch(url, {
@@ -146,7 +160,7 @@ export async function GET(request: Request) {
     const results = (data.web?.results ?? [])
       .map(normalizeResult)
       .filter((result): result is SlimBraveResult => result !== null)
-      .slice(0, 5);
+      .slice(0, resultCount);
 
     setCachedResults(cacheKey, results);
 

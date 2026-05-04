@@ -28,6 +28,7 @@ const paths = {
 
 const statusPriority = ["operating", "care_maintenance", "development", "exploration", "closed"];
 const MAIN_COMMODITY_CODES = new Set(["AG", "AU", "BI", "CO", "CU", "LI", "NI", "PB", "SB", "ZN"]);
+/** DMIRS symbols like "Au" / "Ag" normalize to uppercase before lookup; AU/AG rows cover element symbols. */
 const COMMODITY_ALIASES = new Map([
   ["SILVER", "AG"],
   ["AG", "AG"],
@@ -155,7 +156,7 @@ function toCommodityList(...values) {
     .flatMap((value) => {
       if (!value) return [];
       if (Array.isArray(value)) return value;
-      return String(value).split(/[;,/| ]+|\band\b/gi);
+      return String(value).split(/[\s;,/|]+|\band\b/gi);
     })
     .map((item) => normalizeCommodity(item))
     .filter((item) => Boolean(item) && MAIN_COMMODITY_CODES.has(item));

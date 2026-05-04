@@ -471,7 +471,7 @@
   justify-content: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  max-width: 620px;
+  max-width: 720px;
   margin: 0 auto 2.4rem;
   opacity: 0;
   animation: slideUp 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.95s forwards;

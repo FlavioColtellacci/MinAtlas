@@ -161,8 +161,9 @@ export default function Home() {
 
           <div className={styles.stats}>
             <div className={`${styles.stat} ${styles.statHi}`}>
-              2,847+ mine sites
+              4,500+ active mine sites
             </div>
+            <div className={styles.stat}>48,000+ recorded sites</div>
             <div className={styles.stat}>11 commodities</div>
             <div className={styles.stat}>Western Australia</div>
             <div className={styles.stat}>14 active clusters</div>

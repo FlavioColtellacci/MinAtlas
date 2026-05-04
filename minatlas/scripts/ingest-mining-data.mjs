@@ -155,7 +155,7 @@ function toCommodityList(...values) {
     .flatMap((value) => {
       if (!value) return [];
       if (Array.isArray(value)) return value;
-      return String(value).split(/[;,/|]+|\band\b/gi);
+      return String(value).split(/[;,/| ]+|\band\b/gi);
     })
     .map((item) => normalizeCommodity(item))
     .filter((item) => Boolean(item) && MAIN_COMMODITY_CODES.has(item));
@@ -228,15 +228,10 @@ function baseMineCandidate(properties, lat, lng, overrides = {}) {
     operator: getFirst(properties, ["operator", "OPERATOR", "HOLDER1", "HOLDER", "OWNER", "COMPANY"]),
     state: "Western Australia",
     roster: getFirst(properties, ["roster", "ROSTER", "SHIFT", "SHIFT_TYPE", "WORK_ROSTER", "WORK_PATTERN"]),
-    nearestTown: getFirst(properties, [
-      "nearest_town",
-      "NEAREST_TOWN",
-      "TOWN",
-      "LOCALITY",
-      "LOCALITY_NA",
-      "DISTR_NAME",
-      "LGA_NAME",
-    ]),
+    lga: getFirst(properties, ["LGA_NAME", "lga_name"]),
+    district: getFirst(properties, ["DISTR_NAME", "distr_name"]),
+    tectonicUnit: getFirst(properties, ["TECTONIC_U", "tectonic_u", "TECTONIC_UNIT", "tectonic_unit"]),
+    nearestTown: getFirst(properties, ["nearest_town", "NEAREST_TOWN", "TOWN", "LOCALITY", "LOCALITY_NA"]),
     distanceToPerthKm: deriveDistanceToPerthKm(lat, lng),
     annualProductionOz: extractAnnualProductionOz(properties),
     commodities: new Set(
@@ -262,6 +257,9 @@ function mergeMineCandidate(existing, incoming) {
   existing.operator = existing.operator ?? incoming.operator;
   existing.roster = existing.roster ?? incoming.roster;
   existing.nearestTown = existing.nearestTown ?? incoming.nearestTown;
+  existing.lga = existing.lga ?? incoming.lga;
+  existing.district = existing.district ?? incoming.district;
+  existing.tectonicUnit = existing.tectonicUnit ?? incoming.tectonicUnit;
   existing.distanceToPerthKm = existing.distanceToPerthKm ?? incoming.distanceToPerthKm;
   existing.annualProductionOz = existing.annualProductionOz ?? incoming.annualProductionOz;
   incoming.commodities.forEach((commodity) => existing.commodities.add(commodity));
@@ -357,6 +355,9 @@ function buildMineRows({
     p_annual_production_oz: mine.annualProductionOz,
     p_roster: mine.roster,
     p_nearest_town: mine.nearestTown,
+    p_lga: mine.lga ?? null,
+    p_district: mine.district ?? null,
+    p_tectonic_unit: mine.tectonicUnit ?? null,
     p_distance_to_perth_km: mine.distanceToPerthKm,
     p_lat: mine.lat,
     p_lng: mine.lng,

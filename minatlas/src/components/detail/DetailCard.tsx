@@ -171,6 +171,33 @@ export default function DetailCard({
         : statItemsForDisplay.length === 2
           ? "grid-cols-2"
           : "grid-cols-1";
+  const geoAdminSection =
+    site && (hasNonEmptyTrim(site.lga) || hasNonEmptyTrim(site.district) || hasNonEmptyTrim(site.tectonic_unit)) ? (
+      <div className="mt-4 border-t border-[color:var(--border)] pt-3">
+        <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Region and geology</p>
+        <dl className="mt-2 space-y-1.5 text-xs text-[color:var(--text-secondary)]">
+          {hasNonEmptyTrim(site.lga) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">LGA</dt>
+              <dd>{site.lga!.trim()}</dd>
+            </div>
+          ) : null}
+          {hasNonEmptyTrim(site.district) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">District</dt>
+              <dd>{site.district!.trim()}</dd>
+            </div>
+          ) : null}
+          {hasNonEmptyTrim(site.tectonic_unit) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Tectonic unit</dt>
+              <dd>{site.tectonic_unit!.trim()}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+    ) : null;
+
   const nearbySitesPreview = nearbySites.slice(0, 5);
   const tenementPreview = tenementsAtSite.slice(0, 3);
   const showTenementsFirst = nearbySitesPreview.length === 0 && tenementPreview.length > 0;
@@ -404,6 +431,8 @@ export default function DetailCard({
 
                 {statsSection}
 
+                {geoAdminSection}
+
                 <div className="mt-4 space-y-3 border-t border-[color:var(--border)] pt-3">{webSearchSection}</div>
               </>
             ) : (
@@ -411,6 +440,8 @@ export default function DetailCard({
                 <p className="text-sm text-[color:var(--text-secondary)]">{summaryText}</p>
 
                 {statsSection}
+
+                {geoAdminSection}
 
                 <div className="mt-4 space-y-3 border-t border-[color:var(--border)] pt-3">
                   <div>

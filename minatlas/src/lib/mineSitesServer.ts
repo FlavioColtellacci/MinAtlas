@@ -3,19 +3,30 @@ import { fetchAllMineSites } from "@/lib/mineSiteModel";
 import type { AppDatabase } from "@/lib/supabase";
 import type { MineSite } from "@/types/mining";
 
-function createServerSupabase() {
+let warnedMissingSeoEnv = false;
+
+/**
+ * Loads all public mine sites for sitemap, `generateStaticParams`, and `/site/[slug]`.
+ * Returns an empty list when Supabase env is missing so `next build` can complete (e.g. Vercel
+ * preview without vars). Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+ * on the deployment for every environment that should serve SEO pages and list them in the sitemap.
+ */
+export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+    if (!warnedMissingSeoEnv) {
+      warnedMissingSeoEnv = true;
+      console.warn(
+        "[MinAtlas] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are unset. Skipping mine-site SEO data fetch. " +
+          "Add both to Vercel → Project → Settings → Environment Variables (enable for Production, Preview, and Development so builds can read them).",
+      );
+    }
+    return [];
   }
 
-  return createClient<AppDatabase>(supabaseUrl, supabaseAnonKey);
-}
-
-export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
-  return fetchAllMineSites(createServerSupabase());
+  return fetchAllMineSites(createClient<AppDatabase>(supabaseUrl, supabaseAnonKey));
 }
 
 /** Lowercase URL slug: NFKD, strip diacritics, non-alphanumeric runs → single hyphen. */

@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
-import { buildMineSiteSlugResolution, getAllMineSitesForSeo } from "@/lib/mineSitesServer";
+import { buildMineSiteSlugResolution, getCachedMineSitesForSeo } from "@/lib/mineSitesServer";
 import { absoluteUrl } from "@/lib/site";
+
+/** Do not prerender at build: Preview builds often lack Supabase env; mine URLs are filled at request time. */
+export const dynamic = "force-dynamic";
 
 const routes = [
   {
@@ -32,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route.priority,
   }));
 
-  const sites = await getAllMineSitesForSeo();
+  const sites = await getCachedMineSitesForSeo();
   const resolution = buildMineSiteSlugResolution(sites);
   const slugs = Array.from(resolution.siteByCanonicalSlug.keys()).sort((a, b) =>
     a.localeCompare(b),

@@ -2,7 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { buildMineSiteSlugResolution, getAllMineSitesForSeo, mineSiteToCanonicalSlug } from "@/lib/mineSitesServer";
+import { buildMineSiteSlugResolution, getCachedMineSitesForSeo } from "@/lib/mineSitesServer";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
 import type { MineSite } from "@/types/mining";
 
@@ -26,10 +26,10 @@ const COMMODITY_NAMES: Record<string, string> = {
 export const revalidate = 60 * 60 * 24;
 export const dynamicParams = true;
 
-const getMineSiteSeoIndex = cache(async () => {
-  const sites = await getAllMineSitesForSeo();
-  const resolution = buildMineSiteSlugResolution(sites);
-  return { sites, resolution };
+/** Slug → site map; Supabase list is cached 24h via `getCachedMineSitesForSeo` (see mineSitesServer). */
+const getSlugResolution = cache(async () => {
+  const sites = await getCachedMineSitesForSeo();
+  return buildMineSiteSlugResolution(sites);
 });
 
 function toTitleCase(value: string) {
@@ -64,15 +64,8 @@ function buildMetaDescription(site: MineSite) {
   return summary.slice(0, 160);
 }
 
-export async function generateStaticParams(): Promise<MineSitePageParams[]> {
-  const { sites, resolution } = await getMineSiteSeoIndex();
-  return sites.map((site) => ({
-    slug: mineSiteToCanonicalSlug(site, resolution),
-  }));
-}
-
 export async function generateMetadata({ params }: { params: MineSitePageParams }): Promise<Metadata> {
-  const { resolution } = await getMineSiteSeoIndex();
+  const resolution = await getSlugResolution();
   const site = resolution.siteByCanonicalSlug.get(params.slug);
   if (!site) {
     return {
@@ -105,7 +98,7 @@ export async function generateMetadata({ params }: { params: MineSitePageParams 
 }
 
 export default async function MineSitePage({ params }: { params: MineSitePageParams }) {
-  const { resolution } = await getMineSiteSeoIndex();
+  const resolution = await getSlugResolution();
   const site = resolution.siteByCanonicalSlug.get(params.slug);
   if (!site) notFound();
 

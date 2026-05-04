@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /** Narrow schema typing for RPCs used by the app (expand when generating full types). */
-type AppDatabase = {
+export type AppDatabase = {
   public: {
     Tables: Record<string, never>;
     Views: Record<string, never>;

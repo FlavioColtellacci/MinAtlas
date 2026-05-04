@@ -228,7 +228,15 @@ function baseMineCandidate(properties, lat, lng, overrides = {}) {
     operator: getFirst(properties, ["operator", "OPERATOR", "HOLDER1", "HOLDER", "OWNER", "COMPANY"]),
     state: "Western Australia",
     roster: getFirst(properties, ["roster", "ROSTER", "SHIFT", "SHIFT_TYPE", "WORK_ROSTER", "WORK_PATTERN"]),
-    nearestTown: getFirst(properties, ["nearest_town", "NEAREST_TOWN", "TOWN", "LOCALITY", "LOCALITY_NA", "LGA_NAME"]),
+    nearestTown: getFirst(properties, [
+      "nearest_town",
+      "NEAREST_TOWN",
+      "TOWN",
+      "LOCALITY",
+      "LOCALITY_NA",
+      "DISTR_NAME",
+      "LGA_NAME",
+    ]),
     distanceToPerthKm: deriveDistanceToPerthKm(lat, lng),
     annualProductionOz: extractAnnualProductionOz(properties),
     commodities: new Set(

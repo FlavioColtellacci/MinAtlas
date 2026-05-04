@@ -5,8 +5,17 @@ export type BraveResult = {
   age?: string;
 };
 
+export type ApiSummaryResponse = {
+  sources: BraveResult[];
+};
+
 type BraveSearchPayload = {
   results?: unknown;
+  error?: unknown;
+};
+
+type ApiSummaryPayload = {
+  sources?: unknown;
   error?: unknown;
 };
 
@@ -34,4 +43,36 @@ export async function searchWeb(query: string): Promise<BraveResult[]> {
   }
 
   return Array.isArray(payload.results) ? payload.results.filter(isBraveResult) : [];
+}
+
+export async function fetchApiSummary(
+  siteName: string,
+  options?: { operator?: string | null },
+): Promise<ApiSummaryResponse> {
+  const trimmedSiteName = siteName.trim();
+  if (!trimmedSiteName) {
+    return { sources: [] };
+  }
+
+  const operator =
+    typeof options?.operator === "string" && options.operator.trim().length > 0
+      ? options.operator.trim()
+      : undefined;
+
+  const response = await fetch("/api/api-summary", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ siteName: trimmedSiteName, ...(operator ? { operator } : {}) }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as ApiSummaryPayload;
+
+  if (!response.ok) {
+    throw new Error(typeof payload.error === "string" ? payload.error : "Unable to load live sources right now");
+  }
+
+  return {
+    sources: Array.isArray(payload.sources) ? payload.sources.filter(isBraveResult) : [],
+  };
 }

@@ -162,6 +162,18 @@ export default async function MineSitePage({ params }: { params: MineSitePagePar
                 <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Status</dt>
                 <dd>{statusLabel}</dd>
               </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">LGA</dt>
+                <dd>{site.lga ?? "Not listed"}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">District</dt>
+                <dd>{site.district ?? "Not listed"}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Tectonic unit</dt>
+                <dd>{site.tectonic_unit ?? "Not listed"}</dd>
+              </div>
             </dl>
           </div>
           <div>

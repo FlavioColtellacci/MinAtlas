@@ -104,6 +104,9 @@ export function mineSiteRowToMineSite(site: MineSiteRow): MineSite {
     roster: site.roster,
     nearest_town: site.nearest_town,
     distance_to_perth_km: site.distance_to_perth_km,
+    lga: site.lga ?? null,
+    district: site.district ?? null,
+    tectonic_unit: site.tectonic_unit ?? null,
     location: {
       coordinates: [site.lng, site.lat],
     },

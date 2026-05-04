@@ -11,6 +11,9 @@ export interface MineSite {
   roster: string | null;
   nearest_town: string | null;
   distance_to_perth_km: number | null;
+  lga: string | null;
+  district: string | null;
+  tectonic_unit: string | null;
   location: { coordinates: [number, number] };
 }
 
@@ -26,6 +29,9 @@ export interface MineSiteRow {
   roster: string | null;
   nearest_town: string | null;
   distance_to_perth_km: number | null;
+  lga: string | null;
+  district: string | null;
+  tectonic_unit: string | null;
   lng: number;
   lat: number;
 }

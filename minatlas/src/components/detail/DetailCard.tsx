@@ -1,9 +1,17 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { ChevronsDownUp, ChevronsUpDown, ExternalLink, Search, SlidersHorizontal, Target } from "lucide-react";
-import { searchWeb, type BraveResult } from "@/lib/braveSearch";
+import { ChevronsDownUp, ChevronsUpDown, ExternalLink, Globe, Loader2, Search, SlidersHorizontal, Target } from "lucide-react";
+import { fetchApiSummary, type BraveResult } from "@/lib/braveSearch";
+import { plainWebText } from "@/lib/webText";
 import type { MineSite, Tenement } from "@/types/mining";
+
+type ApiSummaryCacheEntry = {
+  sources: BraveResult[];
+};
+
+/** Session cache: one live summary request per site name + known operator (search query differs). */
+const apiSummaryCache = new Map<string, ApiSummaryCacheEntry>();
 
 const COMMODITY_NAMES: Record<string, string> = {
   AG: "Silver",
@@ -50,6 +58,78 @@ function hasNonEmptyTrim(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isAiLiveSummaryStatus(status: MineSite["status"]): boolean {
+  return status === "operating" || status === "care_maintenance";
+}
+
+function isPublicRecordsStatus(status: MineSite["status"]): boolean {
+  return status === "exploration" || status === "development";
+}
+
+function BraveInlineResults({ results }: { results: BraveResult[] }) {
+  if (results.length === 0) return null;
+  return (
+    <div className="mt-2 space-y-1.5">
+      {results.map((result) => (
+        <a
+          key={result.url}
+          href={result.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-lg border border-transparent px-2 py-1.5 transition-all duration-150 ease-out hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-subtle)]"
+        >
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-xs text-[color:var(--text-primary)]">{result.title}</span>
+            <ExternalLink className="h-3 w-3 shrink-0 text-[color:var(--text-tertiary)]" />
+          </span>
+          {result.description ? (
+            <span className="mt-0.5 block line-clamp-2 text-[11px] leading-snug text-[color:var(--text-tertiary)]">
+              {plainWebText(result.description)}
+            </span>
+          ) : null}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonShimmerLine({ className, delayMs }: { className: string; delayMs: number }) {
+  return (
+    <div
+      className={[
+        "relative h-2.5 overflow-hidden rounded-full border border-[color:var(--border-subtle)]/40 bg-[color:var(--muted)]",
+        "shadow-[inset_0_1px_1px_rgba(255,255,255,0.35)]",
+        className,
+      ].join(" ")}
+      aria-hidden
+    >
+      <div
+        className="absolute inset-y-0 left-0 w-[min(55%,8rem)] rounded-full bg-gradient-to-r from-transparent via-[color:var(--status-active)]/35 to-transparent blur-[0.5px] animate-detail-skeleton-sheen will-change-transform"
+        style={{ animationDelay: `${delayMs}ms` }}
+      />
+    </div>
+  );
+}
+
+function ApiSummarySkeleton() {
+  return (
+    <div className="mt-2.5 space-y-3" aria-busy="true" aria-live="polite">
+      <div className="rounded-lg border border-[color:var(--border-subtle)]/50 bg-[color:var(--bg-frosted)]/50 p-2.5 shadow-sm backdrop-blur-[2px]">
+        <div className="space-y-2">
+          <SkeletonShimmerLine className="w-full" delayMs={0} />
+          <SkeletonShimmerLine className="w-[92%]" delayMs={140} />
+          <SkeletonShimmerLine className="w-[68%]" delayMs={280} />
+        </div>
+      </div>
+      <div className="space-y-1.5 rounded-lg border border-[color:var(--border-subtle)]/35 bg-[color:var(--muted)]/30 p-2 pl-2.5">
+        <SkeletonShimmerLine className="h-2 w-[78%]" delayMs={60} />
+        <SkeletonShimmerLine className="h-2 w-[64%]" delayMs={200} />
+        <SkeletonShimmerLine className="h-2 w-[48%]" delayMs={340} />
+      </div>
+    </div>
+  );
+}
+
 /** DMIRS often supplies LGA / shire names in `nearest_town`; those are regions, not settlements. */
 function looksLikeGovernmentArea(name: string): boolean {
   const n = name.toUpperCase();
@@ -89,21 +169,21 @@ export default function DetailCard({
   onGuideFilters = () => undefined,
 }: DetailCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const [webResults, setWebResults] = useState<BraveResult[]>([]);
-  const [isWebSearchLoading, setIsWebSearchLoading] = useState(false);
-  const [webSearchError, setWebSearchError] = useState<string | null>(null);
-  const [hasWebSearchRun, setHasWebSearchRun] = useState(false);
-  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const [publicRecordsRan, setPublicRecordsRan] = useState(false);
+  const [apiSummaryResults, setApiSummaryResults] = useState<BraveResult[]>([]);
+  const [apiSummaryLoading, setApiSummaryLoading] = useState(false);
+  const [apiSummaryError, setApiSummaryError] = useState<string | null>(null);
+  const [apiSummaryRan, setApiSummaryRan] = useState(false);
   const siteIdRef = useRef<string | null>(site?.id ?? null);
   const hasSelection = Boolean(site);
 
   useEffect(() => {
     siteIdRef.current = site?.id ?? null;
-    setWebResults([]);
-    setWebSearchError(null);
-    setIsWebSearchLoading(false);
-    setHasWebSearchRun(false);
-    setSearchedQuery(null);
+    setPublicRecordsRan(false);
+    setApiSummaryResults([]);
+    setApiSummaryError(null);
+    setApiSummaryLoading(false);
+    setApiSummaryRan(false);
   }, [site?.id]);
 
   const statusPill = site?.status === "operating" ? "Active" : "Tracked";
@@ -171,34 +251,225 @@ export default function DetailCard({
         : statItemsForDisplay.length === 2
           ? "grid-cols-2"
           : "grid-cols-1";
+  const geoAdminSection =
+    site && (hasNonEmptyTrim(site.lga) || hasNonEmptyTrim(site.district) || hasNonEmptyTrim(site.tectonic_unit)) ? (
+      <div className="mt-4 border-t border-[color:var(--border)] pt-3">
+        <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Region and geology</p>
+        <dl className="mt-2 space-y-1.5 text-xs text-[color:var(--text-secondary)]">
+          {hasNonEmptyTrim(site.lga) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">LGA</dt>
+              <dd>{site.lga!.trim()}</dd>
+            </div>
+          ) : null}
+          {hasNonEmptyTrim(site.district) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">District</dt>
+              <dd>{site.district!.trim()}</dd>
+            </div>
+          ) : null}
+          {hasNonEmptyTrim(site.tectonic_unit) ? (
+            <div>
+              <dt className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Tectonic unit</dt>
+              <dd>{site.tectonic_unit!.trim()}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+    ) : null;
+
   const nearbySitesPreview = nearbySites.slice(0, 5);
   const tenementPreview = tenementsAtSite.slice(0, 3);
   const showTenementsFirst = nearbySitesPreview.length === 0 && tenementPreview.length > 0;
-  const webSearchQuery = site ? [site.name, site.operator, site.state, "mining"].filter(Boolean).join(" ") : "";
+  const isAiSummarySite = Boolean(site && isAiLiveSummaryStatus(site.status));
+  const isPublicRecordsSite = Boolean(site && isPublicRecordsStatus(site.status));
 
-  const handleWebSearch = async () => {
-    if (!site || isWebSearchLoading) return;
+  const handleApiSummarySearch = async (options?: { bypassCache?: boolean }) => {
+    if (!site || apiSummaryLoading) return;
+    const nameKey = site.name.trim();
+    if (!nameKey) return;
 
     const selectedSiteId = site.id;
-    setIsWebSearchLoading(true);
-    setWebSearchError(null);
-    setHasWebSearchRun(true);
-    setSearchedQuery(webSearchQuery);
+    setApiSummaryLoading(true);
+    setApiSummaryError(null);
+    setApiSummaryRan(true);
+
+    const cacheKey = `${nameKey}\0${hasNonEmptyTrim(site.operator) ? site.operator!.trim() : ""}`;
+    if (options?.bypassCache) {
+      apiSummaryCache.delete(cacheKey);
+    }
 
     try {
-      const results = await searchWeb(webSearchQuery);
+      let cachedEntry = options?.bypassCache ? undefined : apiSummaryCache.get(cacheKey);
+      if (!cachedEntry) {
+        cachedEntry = await fetchApiSummary(nameKey, {
+          operator: hasNonEmptyTrim(site.operator) ? site.operator!.trim() : null,
+        });
+        apiSummaryCache.set(cacheKey, cachedEntry);
+      }
       if (siteIdRef.current !== selectedSiteId) return;
-      setWebResults(results);
+      setApiSummaryResults(cachedEntry.sources);
     } catch (error) {
       if (siteIdRef.current !== selectedSiteId) return;
-      setWebResults([]);
-      setWebSearchError(error instanceof Error ? error.message : "Unable to search the web right now");
+      setApiSummaryResults([]);
+      setApiSummaryError(error instanceof Error ? error.message : "Unable to load live sources right now");
     } finally {
       if (siteIdRef.current === selectedSiteId) {
-        setIsWebSearchLoading(false);
+        setApiSummaryLoading(false);
       }
     }
   };
+
+  const hideLiveSummaryPromo = apiSummaryRan && !apiSummaryError && apiSummaryResults.length > 0;
+
+  const liveSummaryShellClass = hideLiveSummaryPromo
+    ? "rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)]/55 px-2.5 py-2"
+    : "rounded-xl border border-[color:var(--border-subtle)] bg-gradient-to-b from-[color:var(--accent-subtle)]/80 to-[color:var(--bg-frosted)]/50 px-3 py-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]";
+
+  const operatorLiveSection = site ? (
+    isPublicRecordsSite ? (
+      <div className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)]/55 px-2.5 py-2">
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)]/60 text-[color:var(--accent)]">
+            <Search className="h-3.5 w-3.5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--text-primary)]">
+              Public records
+            </p>
+            <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--text-secondary)]">
+              Search external public records for additional context about this prospect.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setPublicRecordsRan(true)}
+          disabled={!site.name?.trim()}
+          title="Show a web search link for this site (opens Google in a new tab)"
+          aria-label="Show web search for this mining site"
+          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--accent-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--accent)] shadow-sm transition-[box-shadow,opacity,transform] duration-200 ease-out hover:border-[color:var(--accent)]/40 hover:shadow-md hover:opacity-95 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-sm"
+        >
+          <Search className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+          Search public records
+        </button>
+        {publicRecordsRan ? (
+          <div className="mt-2.5 space-y-2.5">
+            <p className="rounded-md bg-[color:var(--accent-subtle)]/45 px-2.5 py-2 text-xs leading-relaxed text-[color:var(--text-primary)]">
+              AI summaries are available for operating mines only. This site is an exploration or development prospect
+              with limited public data.
+            </p>
+            <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(`${site.name} Western Australia`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[color:var(--accent)]/35 bg-[color:var(--bg-frosted)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--text-primary)] transition-colors duration-150 hover:bg-[color:var(--accent-subtle)]"
+            >
+              <span>Search the web</span>
+              <ExternalLink className="h-3 w-3 shrink-0 text-[color:var(--text-tertiary)]" />
+            </a>
+          </div>
+        ) : null}
+      </div>
+    ) : isAiSummarySite ? (
+      <div className={liveSummaryShellClass}>
+        {!hideLiveSummaryPromo ? (
+          <>
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-subtle)] bg-[color:var(--bg-frosted)]/60 text-[color:var(--accent)]">
+                <Globe className="h-3.5 w-3.5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--text-primary)]">
+                  Live sources
+                </p>
+                <p className="mt-0.5 text-[11px] leading-snug text-[color:var(--text-secondary)]">
+                  Top web search results for this site — open any link to read the source page.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleApiSummarySearch()}
+              disabled={apiSummaryLoading || !site.name?.trim()}
+              title="Search the web for this site and show the top results"
+              aria-label="Search the web for this mining site and show the top results"
+              className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--status-active)]/25 bg-[color:var(--status-active-bg)] px-3 py-2 text-xs font-semibold text-[color:var(--status-active)] shadow-sm transition-[box-shadow,opacity,transform] duration-200 ease-out hover:border-[color:var(--status-active)]/40 hover:shadow-md hover:opacity-95 active:scale-[0.99] disabled:cursor-wait disabled:opacity-90 disabled:hover:shadow-sm"
+            >
+              {apiSummaryLoading ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <Globe className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+              )}
+              {apiSummaryLoading ? "Loading…" : "Search live sources"}
+            </button>
+          </>
+        ) : null}
+
+        {apiSummaryError ? (
+          <p className={`text-xs text-red-400 ${hideLiveSummaryPromo ? "mt-0" : "mt-2"}`} role="alert">
+            {apiSummaryError}
+          </p>
+        ) : null}
+
+        {apiSummaryLoading && !hideLiveSummaryPromo ? (
+          <div className="mt-2.5">
+            <p className="mb-2 flex items-center gap-2 text-[11px] font-medium text-[color:var(--text-secondary)]">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--status-active)] opacity-35" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--status-active)] shadow-[0_0_6px_rgba(61,158,95,0.45)]" />
+              </span>
+              <span className="text-[color:var(--status-active)]">Fetching live sources</span>
+              <span className="text-[color:var(--text-tertiary)]">…</span>
+            </p>
+            <ApiSummarySkeleton />
+          </div>
+        ) : null}
+
+        {hideLiveSummaryPromo && !apiSummaryError ? (
+          <>
+            {apiSummaryLoading ? (
+              <p className="mb-2 flex items-center gap-2 text-[11px] font-medium text-[color:var(--text-secondary)]">
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[color:var(--status-active)]" aria-hidden />
+                <span>Refreshing live sources…</span>
+              </p>
+            ) : null}
+            <div
+              className={
+                apiSummaryLoading
+                  ? "pointer-events-none opacity-[0.52] transition-opacity duration-200"
+                  : undefined
+              }
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--text-primary)]">
+                Live sources
+              </p>
+              <BraveInlineResults results={apiSummaryResults} />
+            </div>
+            {!apiSummaryLoading ? (
+              <div className="mt-2 space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => void handleApiSummarySearch({ bypassCache: true })}
+                  disabled={!site.name?.trim()}
+                  className="text-[11px] font-medium text-[color:var(--status-active)] underline decoration-[color:var(--status-active)]/30 underline-offset-2 transition-opacity duration-150 hover:opacity-80"
+                >
+                  Refresh live sources
+                </button>
+                <p className="text-[10px] tracking-[0.06em] text-[color:var(--text-tertiary)]">
+                  LIVE SUMMARIES AND LINKS ARE NOT VERIFIED BY MINATLAS
+                </p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+
+        {apiSummaryRan && !apiSummaryLoading && !apiSummaryError && !hideLiveSummaryPromo ? (
+          <p className="mt-2 text-xs text-[color:var(--text-tertiary)]">No web results for this search.</p>
+        ) : null}
+      </div>
+    ) : null
+  ) : null;
 
   const nearbySitesSection = (
     <section className="rounded-xl border border-[color:var(--border-subtle)] bg-[color:var(--accent-subtle)] p-2.5">
@@ -242,66 +513,6 @@ export default function DetailCard({
         </div>
       </section>
     ) : null;
-
-  const webSearchSection = (
-    <section className="rounded-xl border border-[color:var(--border-subtle)] p-2.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-[color:var(--text-primary)]">Search the web</p>
-          {searchedQuery ? (
-            <p className="mt-0.5 truncate text-[11px] text-[color:var(--text-tertiary)]">{searchedQuery}</p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={handleWebSearch}
-          disabled={isWebSearchLoading}
-          className="inline-flex min-w-0 max-w-[14rem] shrink items-center gap-1.5 rounded-full bg-[color:var(--status-active-bg)] px-2.5 py-1 text-xs text-[color:var(--status-active)] transition-opacity duration-200 ease-out hover:opacity-85 disabled:cursor-wait disabled:opacity-60"
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="truncate">{isWebSearchLoading ? "Searching..." : `Search the web for ${site?.name}`}</span>
-        </button>
-      </div>
-
-      {webSearchError ? (
-        <p className="mt-2 text-xs text-red-400" role="alert">
-          {webSearchError}
-        </p>
-      ) : null}
-
-      {hasWebSearchRun && !isWebSearchLoading && !webSearchError ? (
-        webResults.length > 0 ? (
-          <div className="mt-2 space-y-1.5">
-            {webResults.map((result) => (
-              <a
-                key={result.url}
-                href={result.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg border border-transparent px-2 py-1.5 transition-all duration-150 ease-out hover:border-[color:var(--accent)] hover:bg-[color:var(--accent-subtle)]"
-              >
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate text-xs text-[color:var(--text-primary)]">{result.title}</span>
-                  <ExternalLink className="h-3 w-3 shrink-0 text-[color:var(--text-tertiary)]" />
-                </span>
-                {result.description ? (
-                  <span className="mt-0.5 block truncate text-[11px] text-[color:var(--text-tertiary)]">{result.description}</span>
-                ) : null}
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="mt-2 text-xs text-[color:var(--text-tertiary)]">No web results found for this site.</p>
-        )
-      ) : null}
-
-      {hasWebSearchRun ? (
-        <p className="mt-2 text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">
-          Web results are not verified by MinAtlas.
-        </p>
-      ) : null}
-    </section>
-  );
 
   const statsSection =
     statItemsForDisplay.length > 0 ? (
@@ -380,10 +591,11 @@ export default function DetailCard({
               <>
                 <div className="space-y-2">
                   <p className="text-sm font-medium leading-snug text-[color:var(--text-primary)]">{sparsePrimaryLine}</p>
+                  {operatorLiveSection}
                   <p className="text-xs leading-relaxed text-[color:var(--text-secondary)]">
                     We do not yet list an operator or a Perth-distance line for this pin in our public snapshot. Nearby mines
-                    and tenements use the same map layers loaded here; web search can add third-party context when you need
-                    more detail.
+                    and tenements use the same map layers loaded here; live sources below can add third-party context when you
+                    need more detail.
                   </p>
                 </div>
 
@@ -404,25 +616,33 @@ export default function DetailCard({
 
                 {statsSection}
 
-                <div className="mt-4 space-y-3 border-t border-[color:var(--border)] pt-3">{webSearchSection}</div>
+                {geoAdminSection}
               </>
             ) : (
               <>
-                <p className="text-sm text-[color:var(--text-secondary)]">{summaryText}</p>
+                <div className="space-y-2">
+                  {site && hasNonEmptyTrim(site.operator) ? (
+                    <p className="text-sm text-[color:var(--text-secondary)]">{summaryText}</p>
+                  ) : locationLabel ? (
+                    <p className="text-sm text-[color:var(--text-secondary)]">{locationLabel}</p>
+                  ) : null}
+                  {operatorLiveSection}
+                </div>
 
                 {statsSection}
+
+                {geoAdminSection}
 
                 <div className="mt-4 space-y-3 border-t border-[color:var(--border)] pt-3">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.08em] text-[color:var(--text-tertiary)]">Context</p>
                     <p className="mt-1 text-xs text-[color:var(--text-secondary)]">
-                      Nearby map data and an optional web lookup for this site.
+                      Nearby map data and optional live summary from the web.
                     </p>
                   </div>
 
                   {nearbySitesSection}
                   {tenementsSection}
-                  {webSearchSection}
                 </div>
               </>
             )}

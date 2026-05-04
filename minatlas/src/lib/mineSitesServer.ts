@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllMineSites } from "@/lib/mineSiteModel";
 import type { AppDatabase } from "@/lib/supabase";
@@ -5,13 +6,7 @@ import type { MineSite } from "@/types/mining";
 
 let warnedMissingSeoEnv = false;
 
-/**
- * Loads all public mine sites for sitemap, `generateStaticParams`, and `/site/[slug]`.
- * Returns an empty list when Supabase env is missing so `next build` can complete (e.g. Vercel
- * preview without vars). Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
- * on the deployment for every environment that should serve SEO pages and list them in the sitemap.
- */
-export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
+async function loadMineSitesForSeo(): Promise<MineSite[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -28,6 +23,21 @@ export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
 
   return fetchAllMineSites(createClient<AppDatabase>(supabaseUrl, supabaseAnonKey));
 }
+
+/**
+ * Loads all public mine sites (uncached). Used by `sitemap.ts` at build time — one fetch per build.
+ */
+export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
+  return loadMineSitesForSeo();
+}
+
+/**
+ * Same data as {@link getAllMineSitesForSeo}, cached across requests for 24h. Use from `/site/[slug]`
+ * so on-demand ISR does not refetch thousands of rows on every slug hit.
+ */
+export const getCachedMineSitesForSeo = unstable_cache(loadMineSitesForSeo, ["minatlas-mine-sites-seo"], {
+  revalidate: 60 * 60 * 24,
+});
 
 /** Lowercase URL slug: NFKD, strip diacritics, non-alphanumeric runs → single hyphen. */
 export function slugify(name: string): string {
@@ -135,7 +145,7 @@ export function mineSiteToCanonicalSlug(site: MineSite, resolution: MineSiteSlug
 }
 
 export async function getSiteBySlug(slug: string): Promise<MineSite | null> {
-  const sites = await getAllMineSitesForSeo();
+  const sites = await getCachedMineSitesForSeo();
   const resolution = buildMineSiteSlugResolution(sites);
   return resolution.siteByCanonicalSlug.get(slug) ?? null;
 }

@@ -24,9 +24,7 @@ async function loadMineSitesForSeo(): Promise<MineSite[]> {
   return fetchAllMineSites(createClient<AppDatabase>(supabaseUrl, supabaseAnonKey));
 }
 
-/**
- * Loads all public mine sites (uncached). Used by `sitemap.ts` at build time — one fetch per build.
- */
+/** Loads all public mine sites (uncached). Prefer {@link getCachedMineSitesForSeo} from app routes. */
 export async function getAllMineSitesForSeo(): Promise<MineSite[]> {
   return loadMineSitesForSeo();
 }

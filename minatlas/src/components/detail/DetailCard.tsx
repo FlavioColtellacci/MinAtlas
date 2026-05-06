@@ -165,7 +165,6 @@ export default function DetailCard({
   onGuideFilters = () => undefined,
 }: DetailCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
-  const [publicRecordsRan, setPublicRecordsRan] = useState(false);
   const [apiSummaryResults, setApiSummaryResults] = useState<BraveResult[]>([]);
   const [apiSummaryLoading, setApiSummaryLoading] = useState(false);
   const [apiSummaryError, setApiSummaryError] = useState<string | null>(null);
@@ -175,7 +174,6 @@ export default function DetailCard({
 
   useEffect(() => {
     siteIdRef.current = site?.id ?? null;
-    setPublicRecordsRan(false);
     setApiSummaryResults([]);
     setApiSummaryError(null);
     setApiSummaryLoading(false);
@@ -279,6 +277,9 @@ export default function DetailCard({
   const showTenementsFirst = nearbySitesPreview.length === 0 && tenementPreview.length > 0;
   const isAiSummarySite = Boolean(site && isAiLiveSummaryStatus(site.status));
   const isPublicRecordsSite = Boolean(site);
+  const publicRecordsSearchUrl = site?.name?.trim()
+    ? `https://www.google.com/search?q=${encodeURIComponent(`${site.name} Western Australia`)}`
+    : "#";
 
   const handleApiSummarySearch = async (options?: { bypassCache?: boolean }) => {
     if (!site || apiSummaryLoading) return;
@@ -338,34 +339,27 @@ export default function DetailCard({
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setPublicRecordsRan(true)}
-          disabled={!site.name?.trim()}
+        <a
+          href={publicRecordsSearchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!site.name?.trim() ? "true" : undefined}
           title="Show a web search link for this site (opens Google in a new tab)"
           aria-label="Show web search for this mining site"
-          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--accent-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--accent)] shadow-sm transition-[box-shadow,opacity,transform] duration-200 ease-out hover:border-[color:var(--accent)]/40 hover:shadow-md hover:opacity-95 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-sm"
+          onClick={(event) => {
+            if (!site.name?.trim()) event.preventDefault();
+          }}
+          className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--accent)]/25 bg-[color:var(--accent-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--accent)] shadow-sm transition-[box-shadow,opacity,transform] duration-200 ease-out hover:border-[color:var(--accent)]/40 hover:shadow-md hover:opacity-95 active:scale-[0.99] ${!site.name?.trim() ? "pointer-events-none cursor-not-allowed opacity-70 hover:shadow-sm" : ""}`}
         >
           <Search className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-          Search public records
-        </button>
-        {publicRecordsRan ? (
-          <div className="mt-2.5 space-y-2.5">
-            <p className="rounded-md bg-[color:var(--accent-subtle)]/45 px-2.5 py-2 text-xs leading-relaxed text-[color:var(--text-primary)]">
-              Public records help add external context for this site. Results can vary by operator activity, reporting
-              quality, and recent news coverage.
-            </p>
-            <a
-              href={`https://www.google.com/search?q=${encodeURIComponent(`${site.name} Western Australia`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex w-fit items-center gap-1.5 rounded-full border border-[color:var(--accent)]/35 bg-[color:var(--bg-frosted)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--text-primary)] transition-colors duration-150 hover:bg-[color:var(--accent-subtle)]"
-            >
-              <span>Search the web</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-[color:var(--text-tertiary)]" />
-            </a>
-          </div>
-        ) : null}
+          Google AI search
+        </a>
+        <div className="mt-2.5">
+          <p className="rounded-md bg-[color:var(--accent-subtle)]/45 px-2.5 py-2 text-xs leading-relaxed text-[color:var(--text-primary)]">
+            MinAtlas powered Google AI search helps surface fast context on this site from public sources. Results may
+            vary depending on operator disclosure quality, source freshness, and current news activity.
+          </p>
+        </div>
       </div>
     ) : isAiSummarySite ? (
       <div className={liveSummaryShellClass}>

@@ -62,10 +62,6 @@ function isAiLiveSummaryStatus(status: MineSite["status"]): boolean {
   return status === "operating" || status === "care_maintenance";
 }
 
-function isPublicRecordsStatus(status: MineSite["status"]): boolean {
-  return status === "exploration" || status === "development";
-}
-
 function BraveInlineResults({ results }: { results: BraveResult[] }) {
   if (results.length === 0) return null;
   return (
@@ -282,7 +278,7 @@ export default function DetailCard({
   const tenementPreview = tenementsAtSite.slice(0, 3);
   const showTenementsFirst = nearbySitesPreview.length === 0 && tenementPreview.length > 0;
   const isAiSummarySite = Boolean(site && isAiLiveSummaryStatus(site.status));
-  const isPublicRecordsSite = Boolean(site && isPublicRecordsStatus(site.status));
+  const isPublicRecordsSite = Boolean(site);
 
   const handleApiSummarySearch = async (options?: { bypassCache?: boolean }) => {
     if (!site || apiSummaryLoading) return;
@@ -356,8 +352,8 @@ export default function DetailCard({
         {publicRecordsRan ? (
           <div className="mt-2.5 space-y-2.5">
             <p className="rounded-md bg-[color:var(--accent-subtle)]/45 px-2.5 py-2 text-xs leading-relaxed text-[color:var(--text-primary)]">
-              AI summaries are available for operating mines only. This site is an exploration or development prospect
-              with limited public data.
+              Public records help add external context for this site. Results can vary by operator activity, reporting
+              quality, and recent news coverage.
             </p>
             <a
               href={`https://www.google.com/search?q=${encodeURIComponent(`${site.name} Western Australia`)}`}

@@ -458,12 +458,20 @@ export default function DataPage() {
           </div>
 
           <div className="flex justify-start pl-2">
-            <Link
-              href="/product"
-              className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
-            >
-              Product
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/news"
+                className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
+              >
+                News
+              </Link>
+              <Link
+                href="/product"
+                className="whitespace-nowrap rounded-full border border-[var(--border)] bg-[var(--glass)] px-4 py-2 text-xs font-medium tracking-[0.08em] text-[rgba(255,253,250,0.86)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[rgba(184,125,69,0.42)] hover:bg-[rgba(184,125,69,0.16)] hover:shadow-[0_0_22px_rgba(184,125,69,0.2)]"
+              >
+                Product
+              </Link>
+            </div>
           </div>
         </div>
       </nav>

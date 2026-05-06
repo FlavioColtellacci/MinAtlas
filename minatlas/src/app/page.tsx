@@ -140,6 +140,9 @@ export default function Home() {
           <Link href="/data" className={styles.navLink}>
             Data
           </Link>
+          <Link href="/news" className={styles.navLink}>
+            News
+          </Link>
           <span className={styles.navSep} aria-hidden />
           <span className={styles.livePill}>
             <span className={styles.liveDot} aria-hidden />

@@ -35,6 +35,8 @@ type MiningNewsRow = {
 };
 
 const NEWS_CATEGORIES: NewsCategory[] = ["australia", "global", "relevant"];
+let warnedMissingNewsEnv = false;
+let warnedNewsFetchFailure = false;
 
 function getEmptyNewsBuckets(): Record<NewsCategory, NewsArticle[]> {
   return {
@@ -72,47 +74,69 @@ function mapRow(row: MiningNewsRow): NewsArticle {
 }
 
 export async function getNewsData(): Promise<NewsData> {
+  const emptyData: NewsData = {
+    allArticles: [],
+    byCategory: getEmptyNewsBuckets(),
+    lastUpdated: null,
+  };
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Supabase environment variables are missing. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    );
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { data, error } = await supabase
-    .from("mining_news")
-    .select(
-      "id,title,url,description,source_name,source_favicon_url,thumbnail_url,published_at,created_at,category",
-    );
-
-  if (error) {
-    throw new Error(`Failed to load mining news: ${error.message}`);
-  }
-
-  const allArticles = ((data ?? []) as MiningNewsRow[])
-    .map(mapRow)
-    .sort(sortByPublishedFallbackCreatedDesc);
-
-  const byCategory = getEmptyNewsBuckets();
-  for (const article of allArticles) {
-    byCategory[article.category].push(article);
-  }
-
-  let lastUpdated: string | null = null;
-  for (const article of allArticles) {
-    if (!lastUpdated || toEpochMs(article.createdAt) > toEpochMs(lastUpdated)) {
-      lastUpdated = article.createdAt;
+    if (!warnedMissingNewsEnv) {
+      warnedMissingNewsEnv = true;
+      console.warn(
+        "[MinAtlas] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY are unset. " +
+          "Rendering /news with an empty feed. Add both vars in Vercel Project Settings for build/runtime.",
+      );
     }
+    return emptyData;
   }
 
-  return {
-    allArticles,
-    byCategory,
-    lastUpdated,
-  };
+  try {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { data, error } = await supabase
+      .from("mining_news")
+      .select(
+        "id,title,url,description,source_name,source_favicon_url,thumbnail_url,published_at,created_at,category",
+      );
+
+    if (error) {
+      throw new Error(`Failed to load mining news: ${error.message}`);
+    }
+
+    const allArticles = ((data ?? []) as MiningNewsRow[])
+      .map(mapRow)
+      .sort(sortByPublishedFallbackCreatedDesc);
+
+    const byCategory = getEmptyNewsBuckets();
+    for (const article of allArticles) {
+      byCategory[article.category].push(article);
+    }
+
+    let lastUpdated: string | null = null;
+    for (const article of allArticles) {
+      if (!lastUpdated || toEpochMs(article.createdAt) > toEpochMs(lastUpdated)) {
+        lastUpdated = article.createdAt;
+      }
+    }
+
+    return {
+      allArticles,
+      byCategory,
+      lastUpdated,
+    };
+  } catch (error) {
+    if (!warnedNewsFetchFailure) {
+      warnedNewsFetchFailure = true;
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.warn(
+        `[MinAtlas] Failed to load mining news. Rendering /news with an empty feed. Reason: ${message}`,
+      );
+    }
+    return emptyData;
+  }
 }
 
 export function isNewsCategory(value: string): value is NewsCategory {

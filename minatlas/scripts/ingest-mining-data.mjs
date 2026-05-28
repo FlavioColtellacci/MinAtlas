@@ -421,10 +421,11 @@ function buildTenementRows({ tenementFeatures, exactPolygonFeatures }) {
 }
 
 async function clearTables(supabase) {
-  const impossibleId = "00000000-0000-0000-0000-000000000000";
-  const { error: mineDeleteError } = await supabase.from("mine_sites").delete().neq("id", impossibleId);
+  // Base tables live in `public` and are no longer exposed through the Data API.
+  // Use server-side RPCs in the `api` schema (service-role only) to truncate.
+  const { error: mineDeleteError } = await supabase.rpc("clear_mine_sites");
   if (mineDeleteError) throw mineDeleteError;
-  const { error: tenementDeleteError } = await supabase.from("tenements").delete().neq("id", impossibleId);
+  const { error: tenementDeleteError } = await supabase.rpc("clear_tenements");
   if (tenementDeleteError) throw tenementDeleteError;
 }
 
@@ -485,6 +486,7 @@ async function run() {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+    db: { schema: "api" },
   });
 
   await clearTables(supabase);

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { APP_DATA_SCHEMA } from "@/lib/supabase";
 
 type NewsCategory = "australia" | "global" | "relevant";
 
@@ -189,6 +190,7 @@ function createSupabaseAdminClient() {
       persistSession: false,
       autoRefreshToken: false,
     },
+    db: { schema: APP_DATA_SCHEMA },
   });
 }
 

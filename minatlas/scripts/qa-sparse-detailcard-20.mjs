@@ -86,7 +86,7 @@ async function main() {
     process.exit(1);
   }
 
-  const supabase = createClient(url, key);
+  const supabase = createClient(url, key, { db: { schema: "api" } });
   const pageSize = 1000;
   const pageCount = 4;
   const pages = [];

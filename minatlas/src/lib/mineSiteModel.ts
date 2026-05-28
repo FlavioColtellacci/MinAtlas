@@ -113,7 +113,7 @@ export function mineSiteRowToMineSite(site: MineSiteRow): MineSite {
   };
 }
 
-export async function fetchAllMineSites(supabase: SupabaseClient<AppDatabase>): Promise<MineSite[]> {
+export async function fetchAllMineSites(supabase: SupabaseClient<AppDatabase, "api">): Promise<MineSite[]> {
   const pages = await Promise.all(
     Array.from({ length: MINE_SITE_PAGE_COUNT }, (_, pageIndex) => {
       const from = pageIndex * MINE_SITE_PAGE_SIZE;

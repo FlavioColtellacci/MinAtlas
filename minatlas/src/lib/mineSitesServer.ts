@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { fetchAllMineSites } from "@/lib/mineSiteModel";
-import type { AppDatabase } from "@/lib/supabase";
+import { APP_DATA_SCHEMA, type AppDatabase } from "@/lib/supabase";
 import type { MineSite } from "@/types/mining";
 
 let warnedMissingSeoEnv = false;
@@ -21,7 +21,11 @@ async function loadMineSitesForSeo(): Promise<MineSite[]> {
     return [];
   }
 
-  return fetchAllMineSites(createClient<AppDatabase>(supabaseUrl, supabaseAnonKey));
+  return fetchAllMineSites(
+    createClient<AppDatabase, "api">(supabaseUrl, supabaseAnonKey, {
+      db: { schema: APP_DATA_SCHEMA },
+    }),
+  );
 }
 
 /** Loads all public mine sites (uncached). Prefer {@link getCachedMineSitesForSeo} from app routes. */

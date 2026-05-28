@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { APP_DATA_SCHEMA } from "@/lib/supabase";
 
 export type NewsCategory = "australia" | "global" | "relevant";
 
@@ -95,7 +96,9 @@ export async function getNewsData(): Promise<NewsData> {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      db: { schema: APP_DATA_SCHEMA },
+    });
     const { data, error } = await supabase
       .from("mining_news")
       .select(
